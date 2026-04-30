@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Recibo - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">Recibo de Pago</h2>
+  <a href="{{ url_for('guias.detalle', guia_id=guia.id) }}" class="btn btn-secondary">Volver</a>
+</div>
+<div class="card" style="max-width:500px;margin:0 auto">
+  <div class="card-title">Seleccionar Metodo de Pago</div>
+  <div class="form-group">
+    <label>Metodo de Pago</label>
+    <select id="metodo-pago" class="form-input" onchange="toggleTerminal()">
+      <option value="efectivo">Efectivo</option>
+      <option value="tarjeta_debito">Tarjeta Debito</option>
+      <option value="tarjeta_credito">Tarjeta Credito</option>
+      <option value="transferencia">Transferencia</option>
+    </select>
+  </div>
+  <div id="terminal-section" class="terminal-section hidden" style="margin-top:12px">
+    <div class="form-group">
+      <label>N. Aprobacion de Terminal (requerido)</label>
+      <input type="text" id="confirmacion" class="form-input" placeholder="Ej: 123456" style="font-size:16px;font-weight:700;letter-spacing:2px"/>
+    </div>
+  </div>
+  <div class="precio-final-box" style="margin-top:16px">
+    <span class="precio-label">TOTAL COBRADO</span>
+    <span class="precio-valor">${{ "%.2f"|format(guia.precio_final|float) }}</span>
+    <span class="precio-currency">MXN</span>
+  </div>
+  <button onclick="descargarRecibo()" class="btn btn-primary btn-full btn-lg" style="margin-top:12px">
+    Descargar Recibo PDF
+  </button>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleTerminal(){
+  const m = document.getElementById('metodo-pago').value;
+  const esTarjeta = ['tarjeta_debito','tarjeta_credito'].includes(m);
+  document.getElementById('terminal-section').classList.toggle('hidden', !esTarjeta);
+  if(esTarjeta) document.getElementById('confirmacion').focus();
+}
+function descargarRecibo(){
+  const m = document.getElementById('metodo-pago').value;
+  const c = (document.getElementById('confirmacion').value||'').trim();
+  if(['tarjeta_debito','tarjeta_credito'].includes(m) && !c){
+    alert('Ingresa el numero de aprobacion de la terminal');
+    document.getElementById('confirmacion').focus(); return;
+  }
+  window.open('/guia/{{ guia.id }}/recibo_pdf?metodo_pago='+m+'&confirmacion='+encodeURIComponent(c),'_blank');
+}
+</script>
+{% endblock %}

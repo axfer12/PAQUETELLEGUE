@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Usuarios - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">👤 Usuarios del Sistema</h2>
+</div>
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:20px">
+<table class="table">
+  <thead><tr><th>#</th><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+  <tbody>
+  {% for u in usuarios %}
+    <tr>
+      <td style="color:var(--text-sub)">{{ u.id }}</td>
+      <td style="font-weight:600">{{ u.nombre }}</td>
+      <td class="mono">{{ u.usuario }}</td>
+      <td><span class="badge" style="{% if u.rol == 'admin' %}background:#1a2a3a;color:#64b5f6{% elif u.rol == 'supervisor' %}background:#2a1a3a;color:#ce93d8{% endif %}">{{ u.rol }}</span></td>
+      <td><span class="badge" style="{% if u.activo %}background:#0a2a0a;color:#88ff88{% else %}background:#3a0000;color:#ff9999{% endif %}">
+        {{ 'Activo' if u.activo else 'Inactivo' }}
+      </span></td>
+      <td>
+        {% if u.id != current_user.id %}
+        <form method="POST" action="{{ url_for('admin.toggle_usuario', uid=u.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-secondary btn-sm">
+            {{ 'Desactivar' if u.activo else 'Activar' }}
+          </button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<div class="card" style="max-width:500px">
+  <div class="card-title">Nuevo Usuario</div>
+  <form method="POST" action="{{ url_for('admin.nuevo_usuario') }}">
+    <div class="form-grid">
+      <div class="form-group"><label>Nombre</label><input name="nombre" class="form-input" required/></div>
+      <div class="form-group"><label>Usuario</label><input name="usuario" class="form-input" required/></div>
+      <div class="form-group"><label>Contrasena</label><input name="password" type="password" class="form-input" required/></div>
+      <div class="form-group">
+        <label>Rol</label>
+        <select name="rol" class="form-input">
+          <option value="operario">Operario</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Sucursal</label>
+        <select name="sucursal_id" class="form-input">
+          {% for s in sucursales %}
+          <option value="{{ s.id }}">{{ s.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top:12px">Crear Usuario</button>
+  </form>
+</div>
+{% endblock %}

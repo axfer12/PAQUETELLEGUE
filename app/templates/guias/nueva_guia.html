@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block title %}Nueva Guia - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div id="resultado">
+<div class="page-header"><h2 class="page-title">Nueva Guia</h2></div>
+<div class="guia-layout">
+  <!-- COLUMNA IZQUIERDA: Formulario -->
+  <div class="guia-form">
+    <!-- REMITENTE -->
+    <div class="card">
+      <h3 class="card-title">Remitente (Origen)</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Nombre *</label><input id="r_nombre" class="form-input" value="PAQUETELLEGUE"/></div>
+        <div class="form-group"><label>Telefono *</label><input id="r_telefono" class="form-input" value="{{ config.get('empresa_telefono','') }}"/></div>
+        <div class="form-group span-2"><label>Calle y Numero *</label><input id="r_calle" class="form-input" value="{{ config.get('empresa_direccion','') }}"/></div>
+        <div class="form-group">
+          <label>Colonia *</label>
+          <div id="r_colonia_wrapper"><select id="r_colonia" class="form-input"><option value="{{ config.get('empresa_colonia','') }}">{{ config.get('empresa_colonia','-- Ingresa CP --') }}</option></select></div>
+        </div>
+        <div class="form-group"><label>Ciudad *</label><input id="r_ciudad" class="form-input" value="{{ config.get('empresa_ciudad','') }}" readonly style="background:#1a1a0a"/></div>
+        <div class="form-group"><label>Estado *</label><input id="r_estado" class="form-input" value="{{ config.get('empresa_estado','') }}" readonly style="background:#1a1a0a"/></div>
+        <div class="form-group"><label>C.P. *</label><input id="r_cp" class="form-input" value="{{ config.get('empresa_cp','') }}" oninput="autoCP('r')"/></div>
+        <input type="hidden" id="r_pais" value="MX"/>
+      </div>
+    </div>
+    <!-- DESTINATARIO -->
+    <div class="card">
+      <h3 class="card-title">Destinatario</h3>
+      <div class="search-cliente-bar" style="position:relative">
+        <input id="buscar-cliente" class="form-input" placeholder="Buscar cliente existente..." oninput="buscarCliente(this.value)" autocomplete="off"/>
+        <div id="resultados-cliente" class="autocomplete-list hidden"></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>Nombre *</label><input id="d_nombre" class="form-input"/></div>
+        <div class="form-group"><label>Telefono *</label><input id="d_telefono" class="form-input"/></div>
+        <div class="form-group span-2"><label>Calle y Numero *</label><input id="d_calle" class="form-input"/></div>
+        <div class="form-group">
+          <label>Colonia *</label>
+          <div id="d_colonia_wrapper"><select id="d_colonia" class="form-input"><option value="">-- Ingresa CP --</option></select></div>
+        </div>
+        <div class="form-group"><label>Ciudad *</label><input id="d_ciudad" class="form-input" readonly style="background:#1a1a0a"/></div>
+        <div class="form-group"><label>Estado *</label><input id="d_estado" class="form-input" readonly style="background:#1a1a0a"/></div>
+        <div class="form-group"><label>C.P. *</label><input id="d_cp" class="form-input" oninput="autoCP('d')"/></div>
+        <div class="form-group">
+          <label>País Destino</label>
+          <select id="d_pais" class="form-input" onchange="toggleInternacional()">
+            <option value="MX">🇲🇽 México</option>
+            <option value="US">🇺🇸 Estados Unidos</option>
+            <option value="CA">🇨🇦 Canadá</option>
+            <option value="ES">🇪🇸 España</option>
+            <option value="CO">🇨🇴 Colombia</option>
+            <option value="AR">🇦🇷 Argentina</option>
+            <option value="CL">🇨🇱 Chile</option>
+            <option value="PE">🇵🇪 Perú</option>
+            <option value="EC">🇪🇨 Ecuador</option>
+            <option value="GT">🇬🇹 Guatemala</option>
+            <option value="HN">🇭🇳 Honduras</option>
+            <option value="SV">🇸🇻 El Salvador</option>
+            <option value="NI">🇳🇮 Nicaragua</option>
+            <option value="CR">🇨🇷 Costa Rica</option>
+            <option value="PA">🇵🇦 Panamá</option>
+            <option value="DO">🇩🇴 República Dominicana</option>
+            <option value="CU">🇨🇺 Cuba</option>
+            <option value="BR">🇧🇷 Brasil</option>
+            <option value="VE">🇻🇪 Venezuela</option>
+            <option value="UY">🇺🇾 Uruguay</option>
+            <option value="PY">🇵🇾 Paraguay</option>
+            <option value="BO">🇧🇴 Bolivia</option>
+            <option value="GB">🇬🇧 Reino Unido</option>
+            <option value="DE">🇩🇪 Alemania</option>
+            <option value="FR">🇫🇷 Francia</option>
+            <option value="IT">🇮🇹 Italia</option>
+            <option value="PT">🇵🇹 Portugal</option>
+            <option value="NL">🇳🇱 Países Bajos</option>
+            <option value="CH">🇨🇭 Suiza</option>
+            <option value="AU">🇦🇺 Australia</option>
+            <option value="JP">🇯🇵 Japón</option>
+            <option value="CN">🇨🇳 China</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Email</label><input id="d_email" class="form-input" type="email"/></div>
+      </div>
+      <div id="seccion-internacional" class="int-section hidden">
+        <h4 class="int-title">🌎 Datos Aduanales — Envio Internacional</h4>
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label>¿Quien paga impuestos aduanales?</label>
+            <div class="radio-group">
+              <label class="radio-label"><input type="radio" name="customs_payer" value="recipient" checked/> Receptor (destino)</label>
+              <label class="radio-label"><input type="radio" name="customs_payer" value="sender"/> Remitente (origen)</label>
+            </div>
+          </div>
+          <div class="form-group span-2">
+            <label>Proposito del envio</label>
+            <div class="radio-group">
+              <label class="radio-label"><input type="radio" name="shipment_purpose" value="personal" checked/> Personal</label>
+              <label class="radio-label"><input type="radio" name="shipment_purpose" value="commercial"/> Comercial</label>
+              <label class="radio-label"><input type="radio" name="shipment_purpose" value="gift"/> Regalo</label>
+              <label class="radio-label"><input type="radio" name="shipment_purpose" value="sample"/> Muestra</label>
+            </div>
+          </div>
+        </div>
+        <!-- Factura Comercial — aparece solo si proposito es comercial o muestra -->
+        <div id="seccion-factura" class="hidden" style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h5 style="margin:0;color:var(--accent);font-size:13px;text-transform:uppercase">Factura Comercial (hasta 5 productos)</h5>
+            <button type="button" onclick="agregarProducto()" class="btn btn-secondary btn-sm">+ Agregar producto</button>
+          </div>
+          <div id="lista-productos">
+            <!-- Producto 1 por defecto -->
+            <div class="producto-row" data-idx="0">
+              <div class="form-grid" style="background:#111;padding:10px;border-radius:6px;margin-bottom:8px;border:1px solid #2a2a1a">
+                <div class="form-group span-2">
+                  <label style="font-size:11px">Descripcion (ingles) *</label>
+                  <input class="form-input prod-desc" placeholder="e.g. Cotton T-Shirt"/>
+                </div>
+                <div class="form-group">
+                  <label style="font-size:11px">Cantidad *</label>
+                  <input class="form-input prod-qty" type="number" value="1" min="1"/>
+                </div>
+                <div class="form-group">
+                  <label style="font-size:11px">Valor unitario USD *</label>
+                  <input class="form-input prod-price" type="number" step="0.01" value="10"/>
+                </div>
+                <div class="form-group">
+                  <label style="font-size:11px">Peso unitario kg</label>
+                  <input class="form-input prod-weight" type="number" step="0.01" value="0.5"/>
+                </div>
+                <div class="form-group">
+                  <label style="font-size:11px">HS Code</label>
+                  <input class="form-input prod-hs" placeholder="ej. 6109.10" maxlength="10"/>
+                </div>
+                <div class="form-group">
+                  <label style="font-size:11px">Pais de origen</label>
+                  <input class="form-input prod-country" value="MX" maxlength="2"/>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- PAQUETE -->
+    <div class="card">
+      <h3 class="card-title">Paquete</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Peso (kg) *</label><input id="peso" class="form-input" type="number" step="0.1" value="1" min="0.1"/></div>
+        <div class="form-group"><label>Alto (cm)</label><input id="alto" class="form-input" type="number" value="10"/></div>
+        <div class="form-group"><label>Ancho (cm)</label><input id="ancho" class="form-input" type="number" value="10"/></div>
+        <div class="form-group"><label>Largo (cm)</label><input id="largo" class="form-input" type="number" value="10"/></div>
+        <div class="form-group"><label>Contenido *</label><input id="contenido" class="form-input" placeholder="documentos, ropa, electronica..."/></div>
+        <div class="form-group">
+          <label>Tipo de empaque *</label>
+          <select id="tipo_empaque" class="form-input">
+            <option value="4G">📦 Caja de cartón</option>
+            <option value="4H2">📦 Caja de plástico rígido</option>
+            <option value="4H1">📦 Caja de plástico expandido (unicel)</option>
+            <option value="4C1">🪵 Caja de madera</option>
+            <option value="5H4">🛍️ Bolsa / Sobre de plástico</option>
+            <option value="5M1">✉️ Sobre de papel / Sobre burbuja</option>
+            <option value="1H1">🛢️ Bidón / Tambor plástico</option>
+            <option value="1H2">🛢️ Bidón plástico tapa desmontable</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Valor declarado $</label><input id="valor_declarado" class="form-input" type="number" value="100" oninput="actualizarSeguro()"/></div>
+        <div class="form-group span-2"><label>Referencia</label><input id="referencia" class="form-input"/></div>
+      </div>
+      <div class="check-row">
+        <label class="check-label"><input type="checkbox" id="con_seguro" onchange="actualizarSeguro()"/> Agregar seguro (10% del valor declarado)</label>
+        <span id="lbl-seguro" class="seguro-badge hidden"></span>
+      </div>
+      <div class="check-row">
+        <label class="check-label"><input type="checkbox" id="guardar_cliente"/> Guardar/actualizar cliente</label>
+      </div>
+    </div>
+    <div class="card card-sm">
+      <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;font-weight:600">🏷️ Descuentos / Promociones</div>
+      <div class="promo-row">
+        <input id="codigo_promo" class="form-input" placeholder="Código de descuento"/>
+        <button type="button" onclick="agregarPromo()" class="btn btn-secondary btn-sm">+ Agregar</button>
+      </div>
+      <div id="lista-promos" style="margin-top:6px;display:flex;flex-direction:column;gap:4px"></div>
+      <div id="total-descuento" style="display:none;text-align:right;font-size:13px;color:var(--green);font-weight:700;margin-top:4px"></div>
+    </div>
+    <button onclick="cotizar()" class="btn btn-primary btn-full btn-lg" id="btn-cotizar">Cotizar Envio</button>
+  </div>
+  <!-- COLUMNA DERECHA -->
+  <div class="guia-sidebar">
+    <div id="panel-cotizacion" class="card">
+      <h3 class="card-title">Cotizacion en Tiempo Real</h3>
+      <div id="rates-container"><div class="rates-empty">Llena los datos y presiona Cotizar</div></div>
+    </div>
+    <div id="panel-generar" class="card hidden">
+      <h3 class="card-title">Servicio Seleccionado</h3>
+      <p style="font-size:11px;color:var(--text-sub);margin:0 0 8px 0">📦 Puedes agregar insumos de empaque antes de generar</p>
+      <div id="rate-seleccionado-info"></div>
+      <div class="precio-final-box">
+        <span class="precio-label">TOTAL A COBRAR</span>
+        <span id="precio-final-display" class="precio-valor">$0.00</span>
+        <span class="precio-currency">MXN</span>
+      </div>
+      <!-- INSUMOS -->
+      <div id="panel-insumos" style="margin:10px 0 0 0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:600;color:var(--gold)">📦 Agregar insumos</span>
+          <button type="button" onclick="toggleInsumos()" id="btn-toggle-insumos"
+                  class="btn btn-secondary btn-sm">+ Agregar</button>
+        </div>
+        <div id="insumos-panel" style="display:none">
+          <div id="insumos-lista" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <select id="insumo-select" class="form-input" style="font-size:13px">
+            <option value="">— Seleccionar insumo —</option>
+          </select>
+          <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+            <input type="number" id="insumo-qty" min="1" value="1" class="form-input" style="width:70px"/>
+            <button type="button" onclick="agregarInsumo()" class="btn btn-secondary btn-sm">Agregar</button>
+          </div>
+          <div id="insumos-subtotal" style="text-align:right;font-size:13px;color:var(--gold);margin-top:6px;font-weight:700"></div>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label style="font-size:13px;color:var(--text-sub)">Método de Pago</label>
+        <select id="metodo-pago" class="form-input" onchange="toggleTerminal()">
+          <option value="efectivo">Efectivo</option>
+          <option value="tarjeta_debito">Tarjeta Débito</option>
+          <option value="tarjeta_credito">Tarjeta Crédito</option>
+          <option value="transferencia">Transferencia</option>
+        </select>
+      </div>
+      <div id="conf-terminal" class="form-group hidden">
+        <label style="font-size:13px;color:var(--text-sub)">N. Aprobación Terminal</label>
+        <input type="text" id="confirmacion" class="form-input" placeholder="123456"/>
+      </div>
+      <button onclick="generarGuia()" class="btn btn-gold btn-full btn-lg" id="btn-generar">Generar Guia Oficial</button>
+    </div>
+    <div id="panel-resultado" class="card hidden">
+      <div class="resultado-ok">
+        <div class="resultado-icon">EXITO</div>
+        <h3>Guia Generada!</h3>
+        <div id="resultado-numero" class="resultado-num"></div>
+        <div id="resultado-precio" class="resultado-precio"></div>
+        <div class="resultado-actions">
+          <button onclick="imprimirEtiqueta()" class="btn btn-gold" id="btn-imprimir-etiqueta">🖨️ Imprimir Etiqueta</button>
+          <a id="btn-pdf-oficial" href="#" target="_blank" class="btn btn-secondary">⬇ Descargar PDF</a>
+          <button onclick="abrirModalRecibo()" class="btn btn-primary">Imprimir Recibo</button>
+          <button onclick="imprimirInvoiceSiAplica()" class="btn btn-secondary" id="btn-invoice" style="display:none">📄 Invoice</button>
+          <button onclick="nuevaGuia()" class="btn btn-secondary">Nueva Guia</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="modal-recibo" class="modal hidden">
+  <div class="modal-overlay" onclick="cerrarModal()"></div>
+  <div class="modal-box">
+    <h3>Recibo de Pago</h3>
+    <div class="form-group">
+      <label style="font-size:13px;color:var(--text-sub)">Método de Pago</label>
+      <div id="modal-metodo-display" style="font-weight:700;color:var(--gold);padding:8px 0;font-size:15px">Efectivo</div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="cerrarModal()" class="btn btn-secondary">Cancelar</button>
+      <button onclick="imprimirDirecto()" class="btn btn-gold" id="btn-imprimir-directo">🖨️ Imprimir Directo</button>
+      <button onclick="descargarRecibo()" class="btn btn-primary">PDF</button>
+    </div>
+  </div>
+</div>
+</div>{# /resultado #}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/nueva_guia.js') }}"></script>
+{% endblock %}

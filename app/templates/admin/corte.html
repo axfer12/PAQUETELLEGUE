@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block title %}Corte de Envíos - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<!-- Encabezado visible solo al imprimir -->
+<div class="print-header">
+  <h1>PAQUETELLEGUE — CORTE DE ENVÍOS</h1>
+  <p>
+    {% if modo == 'diario' %}Fecha: <strong>{{ desde }}</strong>
+    {% else %}Período: <strong>{{ desde }}</strong> al <strong>{{ hasta }}</strong>{% endif %}
+    {% if operario %} &nbsp;|&nbsp; Operario filtrado{% endif %}
+  </p>
+  <p>Generado: {{ moment().strftime('%d/%m/%Y %H:%M') if moment is defined else '' }}</p>
+  <table style="width:100%;margin-top:8px;font-size:10pt">
+    <tr>
+      <td style="text-align:center"><strong>{{ total_guias }}</strong><br>Guías</td>
+      <td style="text-align:center"><strong>${{ "%.2f"|format(total_ventas) }}</strong><br>Total cobrado</td>
+      {% if current_user.is_admin %}
+      <td style="text-align:center"><strong>${{ "%.2f"|format(total_costo) }}</strong><br>Costo</td>
+      <td style="text-align:center"><strong>${{ "%.2f"|format(total_utilidad) }}</strong><br>Utilidad</td>
+      {% endif %}
+    </tr>
+  </table>
+</div>
+
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+  <h2 class="page-title">✂️ Corte de Envíos</h2>
+  <div style="display:flex;gap:8px">
+    <button onclick="imprimirCorteTermica()" class="btn btn-secondary btn-sm">🧾 Térmica (80mm)</button>
+    <button onclick="imprimirCortePDF()" class="btn btn-secondary btn-sm">🖨️ Hoja carta (PDF)</button>
+  </div>
+</div>
+
+<!-- FILTROS -->
+<div id="filtros-corte" class="card" style="margin-bottom:16px">
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+
+    <!-- Modo diario -->
+    <form method="GET" action="{{ url_for('admin.corte') }}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <input type="hidden" name="modo" value="diario">
+      <div class="form-group" style="margin:0">
+        <label style="font-size:12px;color:var(--text-sub)">Corte del día</label>
+        <input type="date" name="fecha" class="form-input" style="width:160px"
+               value="{{ desde if modo=='diario' else '' }}"
+               max="{{ desde }}">
+      </div>
+      {% if current_user.is_supervisor %}
+      <div class="form-group" style="margin:0">
+        <label style="font-size:12px;color:var(--text-sub)">Operario</label>
+        <select name="operario" class="form-input" style="width:160px">
+          <option value="">Todos</option>
+          {% for u in usuarios %}
+          <option value="{{ u.id }}" {% if operario|string == u.id|string %}selected{% endif %}>{{ u.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      {% if current_user.is_admin_global %}
+      <div class="form-group" style="margin:0">
+        <label style="font-size:12px;color:var(--text-sub)">Sucursal</label>
+        <select name="sucursal" class="form-input" style="width:160px">
+          <option value="">Todas</option>
+          {% for s in sucursales %}
+          <option value="{{ s.id }}" {% if sucursal_filtro|string == s.id|string %}selected{% endif %}>{{ s.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <button type="submit" class="btn btn-primary btn-sm">Ver día</button>
+    </form>
+
+    <div style="border-left:1px solid var(--border);height:40px;margin:0 4px"></div>
+
+    <!-- Modo rango -->
+    <form method="GET" action="{{ url_for('admin.corte') }}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <input type="hidden" name="modo" value="rango">
+      <div class="form-group" style="margin:0">
+        <label style="font-size:12px;color:var(--text-sub)">Desde</label>
+        <input type="date" name="desde" class="form-input" style="width:150px"
+               value="{{ desde if modo=='rango' else '' }}">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label style="font-size:12px;color:var(--text-sub)">Hasta</label>
+        <input type="date" name="hasta" class="form-input" style="width:150px"
+               value="{{ hasta if modo=='rango' else '' }}">
+      </div>
+      {% if current_user.is_supervisor %}
+      <div class="form-group" style="margin:0">
+        <label style="font-size:12px;color:var(--text-sub)">Operario</label>
+        <select name="operario" class="form-input" style="width:150px">
+          <option value="">Todos</option>
+          {% for u in usuarios %}
+          <option value="{{ u.id }}" {% if operario|string == u.id|string %}selected{% endif %}>{{ u.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <button type="submit" class="btn btn-primary btn-sm">Ver rango</button>
+    </form>
+  </div>
+</div>
+
+<!-- PERÍODO -->
+<div style="font-size:13px;color:var(--text-sub);margin-bottom:14px">
+  {% if modo == 'diario' %}
+    📅 Corte del día: <strong style="color:var(--gold)">{{ desde }}</strong>
+  {% else %}
+    📅 Período: <strong style="color:var(--gold)">{{ desde }}</strong> al <strong style="color:var(--gold)">{{ hasta }}</strong>
+  {% endif %}
+  {% if operario %}— Operario filtrado{% endif %}
+</div>
+
+<!-- RESUMEN TARJETAS -->
+<div class="no-break" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px">
+  <div class="card" style="text-align:center;padding:16px 12px">
+    <div style="font-size:28px;font-weight:700;color:var(--gold)">{{ total_guias }}</div>
+    <div style="font-size:12px;color:var(--text-sub)">Guías generadas</div>
+  </div>
+  <div class="card" style="text-align:center;padding:16px 12px">
+    <div style="font-size:24px;font-weight:700;color:#88ff88">${{ "%.2f"|format(total_ventas) }}</div>
+    <div style="font-size:12px;color:var(--text-sub)">Total cobrado</div>
+  </div>
+  {% if current_user.is_admin %}
+  <div class="card" style="text-align:center;padding:16px 12px">
+    <div style="font-size:24px;font-weight:700;color:#ff9999">${{ "%.2f"|format(total_costo) }}</div>
+    <div style="font-size:12px;color:var(--text-sub)">Costo proveedor</div>
+  </div>
+  <div class="card" style="text-align:center;padding:16px 12px">
+    <div style="font-size:24px;font-weight:700;color:#64b5f6">${{ "%.2f"|format(total_utilidad) }}</div>
+    <div style="font-size:12px;color:var(--text-sub)">Utilidad</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- TARJETA INSUMOS si hay -->
+{% if total_insumos_venta > 0 %}
+<div style="margin-bottom:16px">
+  <div class="card">
+    <div class="card-title" style="font-size:13px;margin-bottom:12px">📦 Insumos vendidos</div>
+    <div style="overflow-x:auto">
+    <table class="table" style="font-size:13px">
+      <thead>
+        <tr>
+          <th>Insumo</th>
+          <th>Cant.</th>
+          <th>Venta</th>
+          {% if current_user.is_admin %}<th>Costo</th><th>Utilidad</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for nombre, data in insumos_detalle.items() %}
+      <tr>
+        <td>{{ nombre }}</td>
+        <td>{{ data.cantidad }}</td>
+        <td style="color:var(--gold)">${{ "%.2f"|format(data.venta) }}</td>
+        {% if current_user.is_admin %}
+        <td style="color:#ff9999">${{ "%.2f"|format(data.costo) }}</td>
+        <td style="color:#64b5f6">${{ "%.2f"|format(data.utilidad) }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="font-weight:700;background:var(--surface2)">
+          <td>TOTAL</td>
+          <td></td>
+          <td style="color:var(--gold)">${{ "%.2f"|format(total_insumos_venta) }}</td>
+          {% if current_user.is_admin %}
+          <td style="color:#ff9999">${{ "%.2f"|format(total_insumos_costo) }}</td>
+          <td style="color:#64b5f6">${{ "%.2f"|format(total_insumos_utilidad) }}</td>
+          {% endif %}
+        </tr>
+      </tfoot>
+    </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- POR MÉTODO DE PAGO + POR SERVICIO -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+  <div class="card">
+    <div class="card-title" style="font-size:13px;margin-bottom:12px">💳 Por método de pago</div>
+    {% if por_pago %}
+      {% for mp, total in por_pago.items() %}
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="text-transform:capitalize">{{ mp }}</span>
+        <strong style="color:var(--gold)">${{ "%.2f"|format(total) }}</strong>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div style="color:var(--text-sub);font-size:13px">Sin datos</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="font-size:13px;margin-bottom:12px">📦 Por paquetería</div>
+    {% if por_servicio %}
+      {% for sv, data in por_servicio.items() %}
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span>{{ sv }} <small style="color:var(--text-sub)">({{ data.guias }})</small></span>
+        <strong style="color:var(--gold)">${{ "%.2f"|format(data.ventas) }}</strong>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div style="color:var(--text-sub);font-size:13px">Sin datos</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- POR OPERARIO -->
+{% if current_user.is_supervisor and por_operario|length > 0 %}
+<div class="card" style="margin-bottom:20px">
+  <div class="card-title" style="font-size:13px;margin-bottom:12px">👤 Por operario</div>
+  <table class="table">
+    <thead><tr><th>Operario</th><th>Guías</th><th>Ventas</th>{% if current_user.is_admin %}<th>Utilidad</th>{% endif %}</tr></thead>
+    <tbody>
+    {% for op, data in por_operario.items() %}
+    <tr>
+      <td style="font-weight:600">{{ op }}</td>
+      <td>{{ data.guias }}</td>
+      <td style="color:#88ff88">${{ "%.2f"|format(data.ventas) }}</td>
+      {% if current_user.is_admin %}<td style="color:#64b5f6">${{ "%.2f"|format(data.utilidad) }}</td>{% endif %}
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if current_user.is_admin_global and por_sucursal|length > 0 %}
+<div class="card" style="margin-bottom:20px">
+  <div class="card-title" style="font-size:13px;margin-bottom:12px">🏪 Por sucursal (consolidado)</div>
+  <table class="table">
+    <thead><tr><th>Sucursal</th><th>Guías</th><th>Ventas</th><th>Utilidad</th></tr></thead>
+    <tbody>
+    {% for sn, data in por_sucursal.items() %}
+    <tr>
+      <td style="font-weight:600">{{ sn }}</td>
+      <td>{{ data.guias }}</td>
+      <td style="color:#88ff88">${{ "%.2f"|format(data.ventas) }}</td>
+      <td style="color:#64b5f6">${{ "%.2f"|format(data.utilidad) }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- DETALLE DE GUÍAS -->
+<div class="card no-break" style="padding:0;overflow:hidden">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+    <span class="card-title" style="font-size:13px;margin:0">📋 Detalle de guías ({{ total_guias }})</span>
+  </div>
+  {% if guias %}
+  <div style="overflow-x:auto">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Guía</th>
+        <th>Servicio</th>
+        <th>Destinatario</th>
+        <th>Ciudad</th>
+        <th>Cobrado</th>
+        {% if current_user.is_admin %}<th>Costo</th>{% endif %}
+        <th>Pago</th>
+        <th>Operario</th>
+        <th>Hora</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for g in guias %}
+    <tr>
+      <td style="color:var(--text-sub)">{{ loop.index }}</td>
+      <td class="mono" style="font-size:11px">{{ g.numero_guia or 'en espera' }}</td>
+      <td><span class="badge">{{ g.servicio }}</span></td>
+      <td>{{ g.destinatario_nombre }}</td>
+      <td style="color:var(--text-sub)">{{ g.destinatario_ciudad }}</td>
+      <td style="color:#88ff88;font-weight:600">${{ "%.2f"|format(g.precio_final or 0) }}</td>
+      {% if current_user.is_admin %}<td style="color:#ff9999">${{ "%.2f"|format(g.costo_proveedor or 0) }}</td>{% endif %}
+      <td style="text-transform:capitalize">{{ g.metodo_pago or 'efectivo' }}</td>
+      <td style="color:var(--text-sub)">{{ g.operario_nombre or '-' }}</td>
+      <td style="color:var(--text-sub);font-size:11px">{{ g.creado_en[11:16] if g.creado_en else '' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:var(--surface2);font-weight:700">
+        <td colspan="5" style="text-align:right;color:var(--text-sub)">TOTALES</td>
+        <td style="color:#88ff88">${{ "%.2f"|format(total_ventas) }}</td>
+        {% if current_user.is_admin %}<td style="color:#ff9999">${{ "%.2f"|format(total_costo) }}</td>{% endif %}
+        <td colspan="3"></td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>
+  {% else %}
+  <div style="padding:40px;text-align:center;color:var(--text-sub)">Sin guías en este período</div>
+  {% endif %}
+</div>
+
+<style>
+@media print {
+  /* Ocultar elementos de UI */
+  nav, .page-header button, .card form,
+  #filtros-corte, button, a.btn { display:none !important; }
+
+  /* Reset colores para impresión */
+  *, *::before, *::after {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #999 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  body { font-family: Arial, sans-serif; font-size: 11pt; margin: 0; padding: 0; }
+
+  /* Página */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 12mm 15mm 12mm;
+  }
+
+  /* Encabezado del corte */
+  .print-header {
+    text-align: center;
+    border-bottom: 2px solid #000 !important;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+  .print-header h1 { font-size: 16pt; margin: 0 0 4px 0; }
+  .print-header p  { font-size: 10pt; margin: 2px 0; }
+
+  /* Tarjetas de resumen */
+  .card { border: 1px solid #999 !important; padding: 8px 12px !important; margin-bottom: 10px !important; border-radius: 0 !important; }
+  .card-title { font-weight: bold; font-size: 10pt; border-bottom: 1px solid #ccc !important; padding-bottom: 4px; margin-bottom: 6px; }
+
+  /* Tablas */
+  table { width: 100% !important; border-collapse: collapse !important; font-size: 9pt; }
+  th { background: #eee !important; border: 1px solid #999 !important; padding: 4px 6px !important; font-weight: bold; text-align: left; }
+  td { border: 1px solid #ccc !important; padding: 3px 6px !important; }
+  tr:nth-child(even) td { background: #f9f9f9 !important; }
+  tfoot td { background: #eee !important; font-weight: bold; border-top: 2px solid #000 !important; }
+
+  /* Badge */
+  .badge { border: 1px solid #999 !important; padding: 1px 4px !important; font-size: 8pt; }
+
+  /* Saltos de página */
+  .no-break { page-break-inside: avoid; }
+  .page-break { page-break-before: always; }
+
+  /* Grid de tarjetas */
+  div[style*="grid-template-columns"] {
+    display: block !important;
+  }
+  div[style*="grid-template-columns"] > .card {
+    display: inline-block !important;
+    width: 22% !important;
+    vertical-align: top !important;
+    margin: 4px !important;
+  }
+}
+
+/* Estilos SOLO para pantalla — encabezado de impresión oculto en pantalla */
+@media screen {
+  .print-header { display: none; }
+}
+</style>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/corte_print.js') }}"></script>
+{% endblock %}

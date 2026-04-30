@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ cliente.nombre }} - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">{{ cliente.nombre }}</h2>
+  <div class="action-bar">
+    <a href="{{ url_for('clientes.editar', cid=cliente.id) }}" class="btn btn-primary">Editar</a>
+    <a href="{{ url_for('clientes.lista') }}" class="btn btn-secondary">← Clientes</a>
+  </div>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Datos del Cliente</div>
+    {% if cliente.empresa %}<div class="detail-row"><span>Empresa</span><span>{{ cliente.empresa }}</span></div>{% endif %}
+    {% if cliente.telefono %}<div class="detail-row"><span>Telefono</span><span>{{ cliente.telefono }}</span></div>{% endif %}
+    {% if cliente.email %}<div class="detail-row"><span>Email</span><span>{{ cliente.email }}</span></div>{% endif %}
+    {% if cliente.rfc %}<div class="detail-row"><span>RFC</span><span class="mono">{{ cliente.rfc }}</span></div>{% endif %}
+    {% if cliente.direccion %}<div class="detail-row"><span>Direccion</span><span>{{ cliente.direccion }}</span></div>{% endif %}
+    {% if cliente.colonia %}<div class="detail-row"><span>Colonia</span><span>{{ cliente.colonia }}</span></div>{% endif %}
+    <div class="detail-row"><span>Ciudad</span><span>{{ cliente.ciudad }}{% if cliente.estado %}, {{ cliente.estado }}{% endif %} {{ cliente.cp }}</span></div>
+    {% if cliente.notas %}<div class="detail-row"><span>Notas</span><span>{{ cliente.notas }}</span></div>{% endif %}
+  </div>
+  <div class="card">
+    <div class="card-title">Historial de Envios ({{ guias|length }})</div>
+    {% for g in guias %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #222;font-size:13px">
+      <div>
+        <div class="mono" style="font-size:11px">{{ g.numero_guia }}</div>
+        <div style="color:var(--text-sub)">{{ g.destinatario_ciudad }} — {{ g.creado_en[:10] if g.creado_en else '' }}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="price">${{ "%.2f"|format(g.precio_final|float) }}</div>
+        <a href="{{ url_for('guias.detalle', guia_id=g.id) }}" class="btn btn-secondary btn-sm" style="margin-top:4px">Ver</a>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty" style="padding:20px 0">Sin envios registrados</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

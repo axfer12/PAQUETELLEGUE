@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Solicitudes de Cancelación{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">🗑️ Solicitudes de Cancelación</h2>
+</div>
+
+{% if not pendientes %}
+<div class="card" style="text-align:center;padding:40px;color:var(--text-sub)">
+  ✅ No hay solicitudes pendientes
+</div>
+{% else %}
+<div class="card" style="padding:0;overflow:hidden">
+<div style="overflow-x:auto">
+<table class="table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Operario</th>
+      <th>Qué cancelar</th>
+      <th>Motivo</th>
+      <th>Fecha</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for s in pendientes %}
+  <tr>
+    <td style="color:var(--text-sub)">{{ s.id }}</td>
+    <td style="font-weight:600">{{ s.operario_nombre or s.operario_id }}</td>
+    <td>
+      <span class="badge" style="{% if s.tipo=='guia' %}background:#1a2a3a;color:#64b5f6{% else %}background:#2a1500;color:#f0a500{% endif %}">
+        {{ 'Guía' if s.tipo=='guia' else 'Insumo' }}
+      </span>
+      <div style="font-size:12px;margin-top:4px">{{ s.descripcion }}</div>
+    </td>
+    <td style="font-size:13px;color:var(--text-sub);max-width:200px">{{ s.motivo }}</td>
+    <td style="font-size:12px;color:var(--text-sub)">{{ s.creado_en[:16] if s.creado_en else '' }}</td>
+    <td>
+      <div style="display:flex;gap:6px">
+        <form method="POST" action="{{ url_for('cancelaciones.resolver', sid=s.id) }}"
+              onsubmit="return confirm('¿Confirmas APROBAR esta cancelación? La acción es irreversible.')">
+          <input type="hidden" name="accion" value="aprobar"/>
+          <button type="submit" class="btn btn-sm" style="background:#1a3a1a;color:#88ff88;border:1px solid #88ff88">
+            ✅ Aprobar
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('cancelaciones.resolver', sid=s.id) }}">
+          <input type="hidden" name="accion" value="rechazar"/>
+          <button type="submit" class="btn btn-sm" style="background:#3a0000;color:#ff9999;border:1px solid #ff4444">
+            ❌ Rechazar
+          </button>
+        </form>
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+</div>
+{% endif %}
+
+{% endblock %}

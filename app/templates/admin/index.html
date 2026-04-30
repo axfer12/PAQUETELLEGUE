@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Admin - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">⚙️ Panel de Administracion</h2>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px">
+  <div class="card card-sm" style="margin-bottom:0">
+    <div style="font-size:11px;color:var(--text-sub);text-transform:uppercase;margin-bottom:4px">Total Guias</div>
+    <div style="font-size:28px;font-weight:700;color:var(--accent)">{{ stats.total_guias }}</div>
+  </div>
+  <div class="card card-sm" style="margin-bottom:0">
+    <div style="font-size:11px;color:var(--text-sub);text-transform:uppercase;margin-bottom:4px">Total Vendido</div>
+    <div style="font-size:28px;font-weight:700;color:var(--green)">${{ "%.2f"|format(stats.total_ventas) }}</div>
+  </div>
+  <div class="card card-sm" style="margin-bottom:0">
+    <div style="font-size:11px;color:var(--text-sub);text-transform:uppercase;margin-bottom:4px">Clientes</div>
+    <div style="font-size:28px;font-weight:700;color:var(--accent)">{{ stats.total_clientes }}</div>
+  </div>
+  <div class="card card-sm" style="margin-bottom:0">
+    <div style="font-size:11px;color:var(--text-sub);text-transform:uppercase;margin-bottom:4px">Usuarios</div>
+    <div style="font-size:28px;font-weight:700;color:var(--accent)">{{ usuarios|length }}</div>
+  </div>
+</div>
+
+<!-- Menu admin -->
+<div class="grid-2">
+  <a href="{{ url_for('admin.configuracion') }}" class="card" style="text-decoration:none;cursor:pointer;transition:border .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+    <div class="card-title">⚙️ Configuracion</div>
+    <p style="color:var(--text-sub);font-size:13px">Datos empresa, markup de precios, IVA, mensaje en recibo</p>
+  </a>
+  <a href="{{ url_for('admin.usuarios') }}" class="card" style="text-decoration:none;cursor:pointer;transition:border .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+    <div class="card-title">👤 Usuarios</div>
+    <p style="color:var(--text-sub);font-size:13px">{{ usuarios|length }} usuario(s) — gestionar accesos y roles</p>
+  </a>
+  <a href="{{ url_for('admin.sucursales') }}" class="card" style="text-decoration:none;cursor:pointer;transition:border .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+    <div class="card-title">🏪 Sucursales</div>
+    <p style="color:var(--text-sub);font-size:13px">Gestionar sucursales y su configuración</p>
+  </a>
+  <a href="{{ url_for('guias.historial') }}" class="card" style="text-decoration:none;cursor:pointer;transition:border .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+    <div class="card-title">📋 Historial Completo</div>
+    <p style="color:var(--text-sub);font-size:13px">{{ stats.total_guias }} guias generadas — ver todas</p>
+  </a>
+  <a href="{{ url_for('clientes.lista') }}" class="card" style="text-decoration:none;cursor:pointer;transition:border .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+    <div class="card-title">👥 Clientes</div>
+    <p style="color:var(--text-sub);font-size:13px">{{ stats.total_clientes }} clientes registrados</p>
+  </a>
+  <a href="{{ url_for('impresion.config') }}" class="card" style="text-decoration:none;cursor:pointer;transition:border .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+    <div class="card-title">🖨️ Impresora Termica</div>
+    <p style="color:var(--text-sub);font-size:13px">Configurar QZ Tray e impresora de 80mm para impresion directa</p>
+  </a>
+  <a href="{{ url_for('admin.promociones') }}" class="card" style="text-decoration:none;cursor:pointer;transition:border .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+    <div class="card-title">🎟️ Promociones y Descuentos</div>
+    <p style="color:var(--text-sub);font-size:13px">Crear y gestionar códigos de descuento para clientes</p>
+  </a>
+  <a href="{{ url_for('admin.insumos') }}" class="card" style="text-decoration:none;cursor:pointer;transition:border .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+    <div class="card-title">📦 Tienda de Insumos</div>
+    <p style="color:var(--text-sub);font-size:13px">Gestionar catálogo de cajas, sobres y materiales de empaque</p>
+  </a>
+</div>
+{% endblock %}

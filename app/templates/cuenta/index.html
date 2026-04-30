@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Mi Cuenta - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">👤 Mi Cuenta</h2>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Informacion</div>
+    <div class="detail-row"><span>Nombre</span><span>{{ current_user.nombre }}</span></div>
+    <div class="detail-row"><span>Usuario</span><span class="mono">{{ current_user.usuario }}</span></div>
+    <div class="detail-row"><span>Rol</span><span class="badge">{{ current_user.rol }}</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Cambiar Contrasena</div>
+    <form method="POST" action="{{ url_for('cuenta.cambiar_password') }}">
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Contrasena actual</label>
+        <input name="password_actual" type="password" class="form-input" required autocomplete="current-password"/>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Nueva contrasena</label>
+        <input name="password_nuevo" type="password" class="form-input" required minlength="6" autocomplete="new-password"/>
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Confirmar nueva contrasena</label>
+        <input name="password_confirma" type="password" class="form-input" required autocomplete="new-password"/>
+      </div>
+      <button type="submit" class="btn btn-primary">Actualizar Contrasena</button>
+    </form>
+  </div>
+</div>
+
+{% if current_user.is_supervisor %}
+<div class="card" style="max-width:400px;margin-top:16px">
+  <div class="card-title">🔐 PIN de Autorización</div>
+  <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px">
+    El operador ingresa este PIN para autorizar cancelaciones en el momento. Mínimo 4 dígitos.
+  </p>
+  <div class="form-group">
+    <label>Nuevo PIN</label>
+    <input id="nuevo-pin" type="password" class="form-input" placeholder="••••" maxlength="8"
+           style="letter-spacing:4px;max-width:140px"/>
+  </div>
+  <div id="pin-resultado" style="display:none;margin-bottom:8px;font-size:13px;padding:8px 12px;border-radius:4px"></div>
+  <button onclick="guardarPin()" class="btn btn-primary btn-sm">Guardar PIN</button>
+</div>
+<script>
+async function guardarPin(){
+  const pin = document.getElementById('nuevo-pin').value.trim();
+  const res = document.getElementById('pin-resultado');
+  if(pin.length < 4){ res.style.display='block'; res.textContent='El PIN debe tener al menos 4 dígitos'; res.style.background='#3a0000'; res.style.color='#ff9999'; return; }
+  const r = await fetch('/cuenta/pin', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({pin})
+  });
+  const d = await r.json();
+  res.style.display='block';
+  res.textContent = d.msg || d.error;
+  res.style.background = d.ok ? '#0a2a0a' : '#3a0000';
+  res.style.color = d.ok ? '#88ff88' : '#ff9999';
+  if(d.ok) document.getElementById('nuevo-pin').value='';
+}
+</script>
+{% endif %}
+{% endblock %}

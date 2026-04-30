@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}Historial - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">📋 Historial de Guias</h2>
+  <a href="{{ url_for('guias.nueva') }}" class="btn btn-gold">✚ Nueva Guia</a>
+</div>
+
+<!-- Filtros -->
+<div class="card card-sm" style="margin-bottom:12px">
+  <form method="GET" class="search-bar">
+    <input name="q" value="{{ filtro }}" class="form-input search-input" placeholder="N. guia, destinatario, ciudad..."/>
+    <input name="desde" type="date" value="{{ request.args.get('desde','') }}" class="form-input" style="width:150px"/>
+    <input name="hasta" type="date" value="{{ request.args.get('hasta','') }}" class="form-input" style="width:150px"/>
+    <button type="submit" class="btn btn-secondary">Filtrar</button>
+    <a href="{{ url_for('guias.historial') }}" class="btn btn-secondary">Limpiar</a>
+  </form>
+</div>
+
+<!-- Resumen rápido -->
+{% if guias %}
+<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+  <div class="card card-sm" style="flex:1;min-width:140px;margin-bottom:0">
+    <div style="font-size:11px;color:var(--text-sub);text-transform:uppercase">Guias</div>
+    <div style="font-size:24px;font-weight:700;color:var(--accent)">{{ guias|length }}</div>
+  </div>
+  <div class="card card-sm" style="flex:1;min-width:140px;margin-bottom:0">
+    <div style="font-size:11px;color:var(--text-sub);text-transform:uppercase">Total vendido</div>
+    <div style="font-size:24px;font-weight:700;color:var(--green)">${{ "%.2f"|format(guias|sum(attribute='precio_final')) }}</div>
+  </div>
+  <div class="card card-sm" style="flex:1;min-width:140px;margin-bottom:0">
+    <div style="font-size:11px;color:var(--text-sub);text-transform:uppercase">Ticket promedio</div>
+    <div style="font-size:24px;font-weight:700;color:var(--accent)">${{ "%.2f"|format(guias|sum(attribute='precio_final') / guias|length) }}</div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card" style="padding:0;overflow:hidden">
+<div class="table-wrap">
+<table class="table" id="tabla-guias">
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>N. Guia</th>
+      <th>Destinatario</th>
+      <th>Servicio</th>
+      <th>Peso</th>
+      <th>Total</th>
+      <th>Pago</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for g in guias %}
+    <tr class="guia-row">
+      <td style="font-size:12px;color:var(--text-sub)">{{ g.creado_en | mx_time | truncate(10, True, '') }}</td>
+      <td class="mono" style="font-size:11px">{{ g.numero_guia or '' }}</td>
+      <td>
+        <div style="font-weight:600">{{ g.destinatario_nombre }}</div>
+        <div style="font-size:11px;color:var(--text-sub)">{{ g.destinatario_ciudad }}, {{ g.destinatario_estado }}</div>
+      </td>
+      <td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ g.servicio }}</td>
+      <td style="font-size:12px">{{ g.peso }} kg</td>
+      <td class="price">${{ "%.2f"|format(g.precio_final|float) }}</td>
+      <td style="font-size:11px;text-transform:uppercase;color:var(--text-sub)">{{ g.metodo_pago or 'efectivo' }}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <a href="{{ url_for('guias.detalle', guia_id=g.id) }}" class="btn btn-secondary btn-sm">Ver</a>
+          {% if g.label_url %}
+          <a href="{{ url_for('guias.pdf_oficial', guia_id=g.id) }}" target="_blank" class="btn btn-gold btn-sm">PDF</a>
+          {% endif %}
+          {% if g.numero_rastreo or g.numero_guia %}
+          <button onclick="rastrearExterno('{{ (g.numero_rastreo or g.numero_guia)|e }}', '{{ (g.servicio or "")|upper|e }}')"
+                  class="btn btn-sm" style="background:#0a2a1a;color:#4caf50;border:1px solid #4caf50"
+                  title="Rastrear en página de la paquetería">📍</button>
+          {% endif %}
+          {% if current_user.is_admin %}
+          <button onclick="eliminarDirecto({{ g.id }}, '{{ g.numero_guia|e }}')"
+                  class="btn btn-sm" style="background:#3a0000;color:#ff9999;border:1px solid #ff4444"
+                  title="Eliminar sin solicitud (Admin)">🗑️</button>
+          {% else %}
+          <button onclick="abrirCancelar('guia', {{ g.id }}, '{{ g.numero_guia|e }} — {{ g.destinatario_nombre|e }}')"
+                  class="btn btn-sm" style="background:#2a1500;color:#f0a500;border:1px solid #f0a500"
+                  title="Solicitar cancelación">⚠️</button>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="8" class="empty">Sin guias registradas</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<!-- MODAL CANCELACIÓN -->
+<div id="modal-cancelar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;align-items:center;justify-content:center">
+  <div class="card" style="width:440px;max-width:95vw">
+    <div class="card-title" style="color:#ff9999">🗑️ Solicitar Cancelación</div>
+    <p id="cancelar-desc" style="font-size:13px;color:var(--text-sub);margin-bottom:14px"></p>
+
+    <div class="form-group">
+      <label>Motivo *</label>
+      <input id="cancelar-motivo" class="form-input" placeholder="Ej: Guía de prueba, error en datos..."/>
+    </div>
+
+    <div style="border:1px solid var(--border);border-radius:6px;padding:12px;margin:12px 0">
+      <p style="font-size:12px;color:var(--text-sub);margin:0 0 10px 0">
+        ¿Tienes el PIN del supervisor disponible ahora?
+      </p>
+      <div class="form-group" style="margin:0">
+        <label style="font-size:12px">PIN supervisor (opcional — autorización inmediata)</label>
+        <input id="cancelar-pin" class="form-input" type="password" placeholder="••••"
+               style="letter-spacing:4px;max-width:120px"/>
+      </div>
+      <p style="font-size:11px;color:var(--text-sub);margin:6px 0 0 0">
+        Si no tienes el PIN, la solicitud quedará pendiente para que el supervisor la autorice desde su sesión.
+      </p>
+    </div>
+
+    <div id="cancelar-resultado" style="display:none;padding:10px;border-radius:4px;margin-bottom:10px;font-size:13px"></div>
+
+    <div style="display:flex;gap:10px">
+      <button onclick="enviarCancelacion()" class="btn btn-sm" style="background:#3a0000;color:#ff9999;border:1px solid #ff4444">
+        Enviar solicitud
+      </button>
+      <button onclick="cerrarCancelar()" class="btn btn-secondary btn-sm">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Filtro local en tiempo real
+document.querySelector('input[name="q"]').addEventListener('input', function(){
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.guia-row').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+
+// ── Modal cancelación ─────────────────────────────────────────────
+let _cancelTipo = null, _cancelRefId = null;
+
+function rastrearExterno(num, servicio) {
+  let url = '';
+  if (servicio.includes('DHL')) {
+    url = `https://www.dhl.com/mx-es/home/rastreo.html?tracking-id=${num}`;
+  } else if (servicio.includes('FEDEX')) {
+    url = `https://www.fedex.com/fedextrack/?trknbr=${num}`;
+  } else if (servicio.includes('ESTAFETA')) {
+    url = `https://www.estafeta.com/rastrear-envio?rastreo=true&guia=${num}`;
+  } else if (servicio.includes('J&T') || servicio.includes('JT')) {
+    url = `https://www.jtexpress.mx/trajectoryQuery?bills=${num}`;
+  } else if (servicio.includes('PAQUETEXPRESS')) {
+    url = `https://www.paquetexpress.com.mx/rastreo?guia=${num}`;
+  } else if (servicio.includes('UPS')) {
+    url = `https://www.ups.com/track?loc=es_MX&tracknum=${num}`;
+  } else if (servicio.includes('SENDEX')) {
+    url = `https://sendex.mx/rastreo?guia=${num}`;
+  } else if (servicio.includes('99')) {
+    url = `https://99minutos.com/track/${num}`;
+  } else if (servicio.includes('IMILE')) {
+    url = `https://www.imile.com/track?billCode=${num}`;
+  } else {
+    url = `https://www.google.com/search?q=rastreo+guia+${num}`;
+  }
+  window.open(url, '_blank');
+}
+
+function abrirCancelar(tipo, refId, desc){
+  _cancelTipo  = tipo;
+  _cancelRefId = refId;
+  document.getElementById('cancelar-desc').textContent = desc;
+  document.getElementById('cancelar-motivo').value = '';
+  document.getElementById('cancelar-pin').value    = '';
+  document.getElementById('cancelar-resultado').style.display = 'none';
+  document.getElementById('modal-cancelar').style.display = 'flex';
+}
+function cerrarCancelar(){
+  document.getElementById('modal-cancelar').style.display = 'none';
+}
+
+async function enviarCancelacion(){
+  const motivo = document.getElementById('cancelar-motivo').value.trim();
+  const pin    = document.getElementById('cancelar-pin').value.trim();
+  const res    = document.getElementById('cancelar-resultado');
+
+  if(!motivo){ _showRes(res, 'Escribe el motivo', false); return; }
+
+  // Paso 1: crear solicitud
+  const r1 = await fetch('/api/solicitar_cancelacion', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({tipo:_cancelTipo, referencia_id:_cancelRefId, motivo})
+  });
+  const d1 = await r1.json();
+  if(!d1.ok){ _showRes(res, 'Error: '+d1.error, false); return; }
+
+  // Paso 2: si hay PIN, autorizar inmediatamente
+  if(pin){
+    const r2 = await fetch('/api/autorizar_cancelacion_pin', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({solicitud_id: d1.solicitud_id, pin})
+    });
+    const d2 = await r2.json();
+    if(d2.ok){
+      _showRes(res, '✅ '+d2.msg, true);
+      setTimeout(()=>{ cerrarCancelar(); location.reload(); }, 1500);
+    } else {
+      // PIN incorrecto — solicitud queda pendiente
+      _showRes(res, '⚠️ PIN incorrecto. Solicitud enviada para aprobación del supervisor.', null);
+    }
+  } else {
+    _showRes(res, '📋 Solicitud enviada. El supervisor debe aprobarla desde su sesión.', null);
+    setTimeout(()=>cerrarCancelar(), 2500);
+  }
+}
+
+async function eliminarDirecto(guiaId, numGuia){
+  if(!confirm('¿Eliminar permanentemente la guía ' + numGuia + '? Esta acción es irreversible.')) return;
+  const r = await fetch('/api/eliminar_directo/' + guiaId, {method:'POST'});
+  const d = await r.json();
+  if(d.ok){ alert('✅ ' + d.msg); location.reload(); }
+  else { alert('❌ Error: ' + d.error); }
+}
+
+function _showRes(el, msg, ok){
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.background = ok === true ? '#0a2a0a' : ok === false ? '#3a0000' : '#1a1a2a';
+  el.style.color = ok === true ? '#88ff88' : ok === false ? '#ff9999' : '#64b5f6';
+  el.style.border = '1px solid '+(ok === true ? '#88ff88' : ok === false ? '#ff4444' : '#4444ff');
+}
+</script>
+{% endblock %}

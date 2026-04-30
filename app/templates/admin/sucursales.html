@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Sucursales - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+  <h1 style="margin:0;color:var(--accent)">🏪 Sucursales</h1>
+  <a href="{{ url_for('admin.nueva_sucursal') }}" class="btn btn-primary">+ Nueva Sucursal</a>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th><th>Nombre</th><th>Ciudad</th><th>Teléfono</th><th>Estado</th><th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sucursales %}
+      <tr>
+        <td>{{ s.id }}</td>
+        <td><strong>{{ s.nombre }}</strong></td>
+        <td>{{ s.ciudad }}{% if s.estado %}, {{ s.estado }}{% endif %}</td>
+        <td>{{ s.telefono or '—' }}</td>
+        <td>
+          <span class="badge {{ 'badge-success' if s.activa else 'badge-danger' }}">
+            {{ 'Activa' if s.activa else 'Inactiva' }}
+          </span>
+        </td>
+        <td style="display:flex;gap:8px">
+          <a href="{{ url_for('admin.editar_sucursal', sid=s.id) }}" class="btn btn-sm btn-secondary">Editar</a>
+          <a href="{{ url_for('admin.config_sucursal', sid=s.id) }}" class="btn btn-sm btn-primary">Config</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;color:var(--text-sub)">Sin sucursales registradas</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
