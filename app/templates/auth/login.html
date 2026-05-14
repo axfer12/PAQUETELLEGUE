@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Iniciar Sesion - PAQUETELLEGUE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at top, #1a1200 0%, #0d0d0d 60%)}
+.login-wrap{width:100%;max-width:400px;padding:20px}
+.login-card{background:#1a1a1a;border:1px solid #3a3020;border-radius:16px;padding:36px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.brand{text-align:center;margin-bottom:28px}
+.brand-icon{font-size:44px;display:block;margin-bottom:8px}
+.brand-name{font-family:Syne,sans-serif;font-size:24px;font-weight:800;color:#C9A84C;letter-spacing:2px}
+.brand-sub{font-size:12px;color:#9A8A6A;margin-top:4px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#9A8A6A;margin-bottom:5px}
+.field input{width:100%;background:#111;border:1px solid #3a3020;color:#F5E6C8;padding:11px 14px;border-radius:6px;font-size:14px;font-family:DM Sans,sans-serif;transition:border .2s}
+.field input:focus{outline:none;border-color:#C9A84C}
+.btn-login{width:100%;background:#C9A84C;color:#000;border:none;padding:13px;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;font-family:Syne,sans-serif;letter-spacing:1px;transition:background .2s;margin-top:4px}
+.btn-login:hover{background:#b8960c}
+.alert{padding:10px 14px;border-radius:6px;margin-bottom:16px;font-size:13px;background:#3a0000;color:#ff9999;border:1px solid #660000}
+</style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="brand">
+      <span class="brand-icon"><img src="{{ url_for('static', filename='img/logo_login.png') }}" alt="PAQUETELLEGUE" style="width:120px;height:120px;object-fit:contain;margin:0 auto 8px;display:block"/></span>
+      <div class="brand-name">PAQUETELLEGUE</div>
+      <div class="brand-sub">Sistema de Gestión de Envíos</div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+      <div class="alert">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    <form method="POST">
+      <div class="field">
+        <label>Usuario</label>
+        <input type="text" name="usuario" placeholder="usuario" autofocus required>
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" name="password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn-login">INICIAR SESIÓN →</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

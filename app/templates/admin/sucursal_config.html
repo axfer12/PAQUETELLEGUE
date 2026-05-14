@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Config {{ sucursal.nombre }} - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header" style="margin-bottom:24px">
+  <h1 style="color:var(--accent)">⚙️ Config: {{ sucursal.nombre }}</h1>
+  <p style="color:var(--text-sub);margin:4px 0 0">Estos datos sobreescriben la configuración global solo para esta sucursal.</p>
+</div>
+
+<div class="card" style="max-width:640px">
+  <form method="POST">
+    <div class="form-group">
+      <label class="form-label">Nombre de la empresa</label>
+      <input type="text" name="empresa_nombre" class="form-input" value="{{ config.empresa_nombre or '' }}">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="form-group">
+        <label class="form-label">Teléfono</label>
+        <input type="text" name="empresa_telefono" class="form-input" value="{{ config.empresa_telefono or '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" name="empresa_email" class="form-input" value="{{ config.empresa_email or '' }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Dirección (calle y número)</label>
+      <input type="text" name="empresa_direccion" class="form-input" value="{{ config.empresa_direccion or '' }}">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+      <div class="form-group">
+        <label class="form-label">Colonia</label>
+        <input type="text" name="empresa_colonia" class="form-input" value="{{ config.empresa_colonia or '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ciudad</label>
+        <input type="text" name="empresa_ciudad" class="form-input" value="{{ config.empresa_ciudad or '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado</label>
+        <input type="text" name="empresa_estado" class="form-input" value="{{ config.empresa_estado or '' }}">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="form-group">
+        <label class="form-label">CP</label>
+        <input type="text" name="empresa_cp" class="form-input" value="{{ config.empresa_cp or '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">RFC</label>
+        <input type="text" name="empresa_rfc" class="form-input" value="{{ config.empresa_rfc or '' }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Markup JSON (ej: {"nacional":30,"internacional":40})</label>
+      <input type="text" name="markup_json" class="form-input" value="{{ config.markup_json or '' }}">
+    </div>
+    <div style="display:flex;gap:12px;margin-top:8px">
+      <button type="submit" class="btn btn-primary">Guardar</button>
+      <a href="{{ url_for('admin.sucursales') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

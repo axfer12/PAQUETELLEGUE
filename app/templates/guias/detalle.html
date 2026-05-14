@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}Guia {{ guia.numero_guia }} - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">Detalle de Guia</h2>
+  <div class="action-bar">
+    {% if guia.label_url %}
+    <button class="btn btn-gold" onclick="imprimirEtiquetaGuia({{ guia.id }}).then(ok=>{ if(!ok) {} })">🖨️ Imprimir Etiqueta</button>
+    <a href="{{ url_for('guias.pdf_oficial', guia_id=guia.id) }}" target="_blank" class="btn btn-secondary">⬇ PDF</a>
+    {% endif %}
+    <a href="{{ url_for('guias.recibo', guia_id=guia.id) }}" class="btn btn-primary">🧾 Recibo</a>
+    {% if guia.numero_rastreo %}
+    <button class="btn btn-gold" onclick="rastrearExterno()">📍 Rastrear en Paquetería</button>
+    {% endif %}
+    {% if guia.destinatario_pais and guia.destinatario_pais != 'MX' %}
+    <button class="btn btn-secondary" onclick="imprimirInvoice({{ guia.id }})">📄 Invoice</button>
+    <a href="{{ url_for('impresion.invoice_download', guia_id=guia.id) }}" target="_blank" class="btn btn-secondary">⬇ Invoice PDF</a>
+    {% endif %}
+    {% if current_user.is_admin and guia.estatus != 'cancelada' and guia.shipment_id_proveedor %}
+    <button class="btn btn-danger" onclick="cancelarGuia({{ guia.id }})">✕ Cancelar</button>
+    {% endif %}
+    <a href="{{ url_for('guias.historial') }}" class="btn btn-secondary">← Historial</a>
+  </div>
+</div>
+
+{% if guia.estatus == 'cancelada' %}
+<div class="alert" style="background:#3a0000;color:#ff9999;border:1px solid #660000;padding:10px 16px;border-radius:6px;margin-bottom:16px">
+  ⚠️ Esta guia fue cancelada
+</div>
+{% endif %}
+
+<div class="grid-2">
+  <div>
+    <div class="card">
+      <div class="card-title">Datos del Envio</div>
+      <div class="detail-row"><span>N. Guia / Rastreo</span><span class="mono">{{ guia.numero_guia }}</span></div>
+      <div class="detail-row"><span>Servicio</span><span>{{ guia.servicio }}</span></div>
+      <div class="detail-row"><span>Peso</span><span>{{ guia.peso }} kg</span></div>
+      <div class="detail-row"><span>Dimensiones</span><span>{{ guia.largo }}×{{ guia.ancho }}×{{ guia.alto }} cm</span></div>
+      <div class="detail-row"><span>Contenido</span><span>{{ guia.contenido }}</span></div>
+      <div class="detail-row"><span>Fecha</span><span>{{ guia.creado_en | mx_time }}</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Remitente</div>
+      <div class="detail-row"><span>Nombre</span><span>{{ guia.remitente_nombre }}</span></div>
+      <div class="detail-row"><span>Telefono</span><span>{{ guia.remitente_telefono }}</span></div>
+      <div class="detail-row"><span>Direccion</span><span>{{ guia.remitente_direccion }}, {{ guia.remitente_colonia }}</span></div>
+      <div class="detail-row"><span>Ciudad</span><span>{{ guia.remitente_ciudad }}, {{ guia.remitente_estado }} {{ guia.remitente_cp }}</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="card-title">Destinatario</div>
+      <div class="detail-row"><span>Nombre</span><span style="font-weight:600">{{ guia.destinatario_nombre }}</span></div>
+      <div class="detail-row"><span>Telefono</span><span>{{ guia.destinatario_telefono }}</span></div>
+      <div class="detail-row"><span>Direccion</span><span>{{ guia.destinatario_direccion }}, {{ guia.destinatario_colonia }}</span></div>
+      <div class="detail-row"><span>Ciudad</span><span>{{ guia.destinatario_ciudad }}, {{ guia.destinatario_estado }} {{ guia.destinatario_cp }}</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Cobro</div>
+      {% if current_user.is_admin %}
+      <div class="detail-row"><span>Costo proveedor</span><span style="color:var(--text-sub)">${{ "%.2f"|format(guia.costo_proveedor|float) }}</span></div>
+      {% endif %}
+      <div class="detail-row"><span>Precio envio</span><span>${{ "%.2f"|format(guia.precio_venta|float) }}</span></div>
+      {% if guia.costo_seguro and guia.costo_seguro|float > 0 %}
+      <div class="detail-row"><span>Seguro (10%)</span><span>${{ "%.2f"|format(guia.costo_seguro|float) }}</span></div>
+      {% endif %}
+      {% if guia.descuento and guia.descuento|float > 0 %}
+      <div class="detail-row"><span>Descuento</span><span style="color:var(--green)">-${{ "%.2f"|format(guia.descuento|float) }}</span></div>
+      {% endif %}
+      <div class="detail-row" style="border-top:1px solid #333;margin-top:8px;padding-top:8px">
+        <span style="font-weight:700">TOTAL</span>
+        <span class="price" style="font-size:18px">${{ "%.2f"|format(guia.precio_final|float) }}</span>
+      </div>
+      <div class="detail-row"><span>Metodo de pago</span><span style="text-transform:uppercase">{{ guia.metodo_pago or 'efectivo' }}</span></div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Modal cancelar con flujo de autorización -->
+<div id="modal-cancelar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;align-items:center;justify-content:center">
+  <div class="card" style="width:440px;max-width:95vw">
+    <div class="card-title" style="color:#ff9999">🗑️ Solicitar Cancelación</div>
+    <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px">
+      Guía: <strong id="cancelar-num" style="color:var(--gold)"></strong>
+    </p>
+    <div class="form-group">
+      <label>Motivo *</label>
+      <input id="cancelar-motivo" class="form-input" placeholder="Ej: Guía de prueba, error en datos..."/>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:6px;padding:12px;margin:10px 0">
+      <p style="font-size:12px;color:var(--text-sub);margin:0 0 8px 0">PIN de supervisor (autorización inmediata — opcional)</p>
+      <input id="cancelar-pin" class="form-input" type="password" placeholder="••••"
+             style="letter-spacing:4px;max-width:120px"/>
+      <p style="font-size:11px;color:var(--text-sub);margin:6px 0 0 0">Sin PIN la solicitud queda pendiente para el supervisor.</p>
+    </div>
+    <div id="cancelar-res" style="display:none;padding:8px 12px;border-radius:4px;margin-bottom:10px;font-size:13px"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="enviarCancelacion()" class="btn btn-sm" style="background:#3a0000;color:#ff9999;border:1px solid #ff4444">Enviar solicitud</button>
+      <button onclick="document.getElementById('modal-cancelar').style.display='none'" class="btn btn-secondary btn-sm">Cerrar</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let _guiaIdCancelar = null;
+
+function rastrearExterno() {
+  const num     = '{{ guia.numero_rastreo or guia.numero_guia }}';
+  const servicio = '{{ guia.servicio or "" }}'.toUpperCase();
+  let url = '';
+
+  if (servicio.includes('DHL')) {
+    url = `https://www.dhl.com/mx-es/home/rastreo.html?tracking-id=${num}`;
+  } else if (servicio.includes('FEDEX')) {
+    url = `https://www.fedex.com/fedextrack/?trknbr=${num}`;
+  } else if (servicio.includes('ESTAFETA')) {
+    url = `https://www.estafeta.com/rastrear-envio?rastreo=true&guia=${num}`;
+  } else if (servicio.includes('J&T') || servicio.includes('JT')) {
+    url = `https://www.jtexpress.mx/trajectoryQuery?bills=${num}`;
+  } else if (servicio.includes('PAQUETEXPRESS')) {
+    url = `https://www.paquetexpress.com.mx/rastreo?guia=${num}`;
+  } else if (servicio.includes('UPS')) {
+    url = `https://www.ups.com/track?loc=es_MX&tracknum=${num}`;
+  } else if (servicio.includes('SENDEX')) {
+    url = `https://sendex.mx/rastreo?guia=${num}`;
+  } else if (servicio.includes('99')) {
+    url = `https://99minutos.com/track/${num}`;
+  } else if (servicio.includes('IMILE')) {
+    url = `https://www.imile.com/track?billCode=${num}`;
+  } else {
+    url = `https://www.google.com/search?q=rastreo+guia+${num}`;
+  }
+
+  window.open(url, '_blank');
+}
+
+async function rastrear() {
+  const panel = document.getElementById('panel-rastreo');
+  panel.style.display = 'block';
+  const contenido = document.getElementById('rastreo-contenido');
+  contenido.innerHTML = '<span style="color:var(--text-sub)">Consultando estado...</span>';
+  try {
+    const r = await fetch('/api/rastrear/{{ guia.numero_rastreo or guia.numero_guia }}');
+    const d = await r.json();
+    if (!d.ok) { contenido.innerHTML = 'Error: ' + d.error; return; }
+    const data = d.data;
+    let html = '';
+    // Intentar mostrar eventos de rastreo
+    const eventos = data.tracking_events || data.events || data.history || [];
+    if (eventos.length) {
+      html = '<div style="display:flex;flex-direction:column;gap:8px">';
+      eventos.slice(0,10).forEach(ev => {
+        const fecha = ev.date || ev.datetime || ev.created_at || '';
+        const desc  = ev.description || ev.status || ev.message || JSON.stringify(ev);
+        const lugar = ev.location || ev.city || '';
+        html += `<div style="padding:8px;background:#111;border-radius:4px;border-left:3px solid var(--accent)">
+          <div style="font-size:11px;color:var(--text-sub)">${fecha} ${lugar}</div>
+          <div style="font-size:13px">${desc}</div>
+        </div>`;
+      });
+      html += '</div>';
+    } else {
+      // Mostrar status general
+      const status = data.status || data.tracking_status || 'Sin informacion';
+      html = `<div style="font-size:16px;font-weight:600;color:var(--accent)">${status}</div>
+              <pre style="font-size:11px;color:var(--text-sub);margin-top:8px;white-space:pre-wrap">${JSON.stringify(data, null, 2)}</pre>`;
+    }
+    contenido.innerHTML = html;
+  } catch(e) {
+    contenido.innerHTML = 'Error consultando rastreo: ' + e.message;
+  }
+}
+
+function cancelarGuia(id) {
+  _guiaIdCancelar = id;
+  document.getElementById('cancelar-num').textContent = '{{ guia.numero_guia }}';
+  document.getElementById('cancelar-motivo').value = '';
+  document.getElementById('cancelar-pin').value = '';
+  document.getElementById('cancelar-res').style.display = 'none';
+  document.getElementById('modal-cancelar').style.display = 'flex';
+}
+
+function _showRes(el, msg, ok){
+  el.textContent = msg; el.style.display='block';
+  el.style.background = ok===true?'#0a2a0a':ok===false?'#3a0000':'#1a1a2a';
+  el.style.color = ok===true?'#88ff88':ok===false?'#ff9999':'#64b5f6';
+  el.style.border='1px solid '+(ok===true?'#88ff88':ok===false?'#ff4444':'#4444ff');
+}
+
+async function enviarCancelacion(){
+  const motivo = document.getElementById('cancelar-motivo').value.trim();
+  const pin    = document.getElementById('cancelar-pin').value.trim();
+  const res    = document.getElementById('cancelar-res');
+  if(!motivo){ _showRes(res,'Escribe el motivo',false); return; }
+
+  const r1 = await fetch('/api/solicitar_cancelacion',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({tipo:'guia',referencia_id:_guiaIdCancelar,motivo})
+  });
+  const d1 = await r1.json();
+  if(!d1.ok){ _showRes(res,'Error: '+d1.error,false); return; }
+
+  if(pin){
+    const r2 = await fetch('/api/autorizar_cancelacion_pin',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({solicitud_id:d1.solicitud_id,pin})
+    });
+    const d2 = await r2.json();
+    if(d2.ok){ _showRes(res,'✅ '+d2.msg,true); setTimeout(()=>location.href='/historial',1500); }
+    else { _showRes(res,'⚠️ PIN incorrecto. Solicitud pendiente para el supervisor.',null); }
+  } else {
+    _showRes(res,'📋 Solicitud enviada. El supervisor debe aprobarla.',null);
+  }
+}
+</script>
+{% endblock %}

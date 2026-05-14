@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Impresoras - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">🖨️ Configuracion de Impresoras</h2>
+  <a href="{{ url_for('admin.index') }}" class="btn btn-secondary">← Admin</a>
+</div>
+
+<!-- Estado QZ Tray -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title">Estado de QZ Tray</div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div id="qz-dot" style="width:14px;height:14px;border-radius:50%;background:#555;flex-shrink:0"></div>
+      <span id="qz-texto" style="color:var(--text-sub)">Verificando conexion...</span>
+    </div>
+    <div id="qz-no-instalado" class="hidden">
+      <a href="https://qz.io/download/" target="_blank" class="btn btn-primary btn-sm">Descargar QZ Tray</a>
+      <span style="color:var(--text-sub);font-size:12px;margin-left:8px">Instala y abre QZ Tray, luego recarga esta pagina</span>
+    </div>
+    <div id="qz-instalado" class="hidden">
+      <span style="color:#88ff88;font-size:13px">✅ Listo para imprimir directo</span>
+      <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="detectarImpresoras()">🔄 Detectar impresoras</button>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Impresora térmica 80mm -->
+  <div class="card">
+    <div class="card-title">🧾 Impresora de Recibos (80mm)</div>
+    <p style="color:var(--text-sub);font-size:12px;margin-bottom:12px">Para imprimir recibos de pago al cliente</p>
+    <div class="form-group" style="margin-bottom:8px">
+      <select id="sel-termica" class="form-input" onchange="document.getElementById('nom-termica').value=this.value">
+        <option value="">-- Detectando... --</option>
+        {% if impresora_termica %}
+        <option value="{{ impresora_termica }}" selected>{{ impresora_termica }}</option>
+        {% endif %}
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <input id="nom-termica" class="form-input" value="{{ impresora_termica }}" placeholder="Nombre de impresora 80mm"/>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="guardarTermica()">Guardar</button>
+      <button class="btn btn-secondary" onclick="probarTermica()">🖨️ Prueba</button>
+    </div>
+    <div id="msg-termica" style="margin-top:8px;font-size:12px"></div>
+  </div>
+
+  <!-- Impresora etiquetas 6x4 -->
+  <div class="card">
+    <div class="card-title">📦 Impresora de Etiquetas (6×4")</div>
+    <p style="color:var(--text-sub);font-size:12px;margin-bottom:12px">Para imprimir guias de envio en etiqueta 152×101mm</p>
+    <div class="form-group" style="margin-bottom:8px">
+      <select id="sel-etiqueta" class="form-input" onchange="document.getElementById('nom-etiqueta').value=this.value">
+        <option value="">-- Detectando... --</option>
+        {% if impresora_etiqueta %}
+        <option value="{{ impresora_etiqueta }}" selected>{{ impresora_etiqueta }}</option>
+        {% endif %}
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <input id="nom-etiqueta" class="form-input" value="{{ impresora_etiqueta }}" placeholder="Nombre de impresora etiquetas"/>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="guardarEtiqueta()">Guardar</button>
+      <button class="btn btn-secondary" onclick="probarEtiqueta()">🖨️ Prueba</button>
+    </div>
+    <div id="msg-etiqueta" style="margin-top:8px;font-size:12px"></div>
+  </div>
+</div>
+  <!-- Impresora normal carta -->
+  <div class="card" style="margin-top:0">
+    <div class="card-title">📄 Impresora Normal (Carta/Letter)</div>
+    <p style="color:var(--text-sub);font-size:12px;margin-bottom:12px">Para imprimir facturas comerciales (invoice) de envios internacionales</p>
+    <div class="form-group" style="margin-bottom:8px">
+      <select id="sel-normal" class="form-input" onchange="document.getElementById('nom-normal').value=this.value">
+        <option value="">-- Detectando... --</option>
+        {% if impresora_normal %}
+        <option value="{{ impresora_normal }}" selected>{{ impresora_normal }}</option>
+        {% endif %}
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <input id="nom-normal" class="form-input" value="{{ impresora_normal }}" placeholder="Nombre de impresora normal"/>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="guardarNormal()">Guardar</button>
+      <button class="btn btn-secondary" onclick="probarNormal()">🖨️ Prueba</button>
+    </div>
+    <div id="msg-normal" style="margin-top:8px;font-size:12px"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let _qzOk = false;
+
+async function initQZ() {
+  try {
+    if (!qz.websocket.isActive()) await qz.websocket.connect();
+    _qzOk = true;
+    document.getElementById('qz-dot').style.background = '#88ff88';
+    document.getElementById('qz-texto').textContent = 'QZ Tray conectado';
+    document.getElementById('qz-instalado').classList.remove('hidden');
+    document.getElementById('qz-no-instalado').classList.add('hidden');
+    detectarImpresoras();
+  } catch(e) {
+    document.getElementById('qz-dot').style.background = '#ff6666';
+    document.getElementById('qz-texto').textContent = 'QZ Tray no detectado';
+    document.getElementById('qz-no-instalado').classList.remove('hidden');
+  }
+}
+
+async function detectarImpresoras() {
+  if (!_qzOk) return;
+  try {
+    const lista = await qz.printers.find();
+    ['sel-termica','sel-etiqueta','sel-normal'].forEach(selId => {
+      const sel = document.getElementById(selId);
+      const actual = selId === 'sel-termica'
+        selId === 'sel-termica' ? document.getElementById('nom-termica').value
+        : selId === 'sel-etiqueta' ? document.getElementById('nom-etiqueta').value
+        : document.getElementById('nom-normal').value;
+      sel.innerHTML = '<option value="">-- Selecciona --</option>';
+      lista.forEach(imp => {
+        const opt = document.createElement('option');
+        opt.value = imp; opt.textContent = imp;
+        if (imp === actual) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    });
+  } catch(e) {}
+}
+
+async function guardarTermica() {
+  const v = document.getElementById('nom-termica').value.trim();
+  if (!v) { alert('Escribe el nombre'); return; }
+  const fd = new FormData(); fd.append('impresora_termica', v);
+  await fetch('/impresion/guardar', { method:'POST', body:fd });
+  localStorage.setItem('pl_impresora', v);
+  mostrar('msg-termica', '✅ Guardado', '#88ff88');
+}
+
+async function guardarEtiqueta() {
+  const v = document.getElementById('nom-etiqueta').value.trim();
+  if (!v) { alert('Escribe el nombre'); return; }
+  const fd = new FormData(); fd.append('impresora_etiqueta', v);
+  await fetch('/impresion/config_etiqueta', { method:'POST', body:fd });
+  localStorage.setItem('pl_impresora_etiqueta', v);
+  mostrar('msg-etiqueta', '✅ Guardado', '#88ff88');
+}
+
+async function probarTermica() {
+  const nombre = document.getElementById('nom-termica').value.trim();
+  if (!nombre) { alert('Primero guarda la impresora'); return; }
+  if (!_qzOk)  { alert('QZ Tray no conectado'); return; }
+  try {
+    const cfg = qz.configs.create(nombre, { size:{width:80,units:'mm'}, margins:{top:2,right:2,bottom:2,left:2} });
+    const html = `<div style="font-family:monospace;font-size:11px;width:72mm;padding:2mm;text-align:center">
+      <b>PAQUETELLEGUE</b><br/>Multipaqueteria<br/>
+      <hr/>*** PRUEBA RECIBOS 80mm ***<hr/>
+      Impresora configurada OK<br/><br/><br/></div>`;
+    await qz.print(cfg, [{type:'pixel',format:'html',flavor:'plain',data:html}]);
+    mostrar('msg-termica', '✅ Impreso', '#88ff88');
+  } catch(e) { mostrar('msg-termica', '❌ '+e.message, '#ff9999'); }
+}
+
+async function probarEtiqueta() {
+  const nombre = document.getElementById('nom-etiqueta').value.trim();
+  if (!nombre) { alert('Primero guarda la impresora'); return; }
+  if (!_qzOk)  { alert('QZ Tray no conectado'); return; }
+  try {
+    const cfg = qz.configs.create(nombre, {
+      size: { width:6, height:4, units:'in' },
+      margins: { top:0, right:0, bottom:0, left:0 },
+      colorType: 'blackwhite', scaleContent: true
+    });
+    const html = `<div style="width:6in;height:4in;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;flex-direction:column;border:3px solid #000">
+      <div style="font-size:36px;font-weight:bold">PAQUETELLEGUE</div>
+      <div style="font-size:18px;margin-top:10px">Multipaqueteria</div>
+      <div style="font-size:14px;margin-top:20px;border:2px solid #000;padding:8px">*** PRUEBA ETIQUETA 6x4" ***</div>
+      <div style="font-size:12px;margin-top:10px">Impresora de etiquetas OK</div>
+    </div>`;
+    await qz.print(cfg, [{type:'pixel',format:'html',flavor:'plain',data:html}]);
+    mostrar('msg-etiqueta', '✅ Impreso', '#88ff88');
+  } catch(e) { mostrar('msg-etiqueta', '❌ '+e.message, '#ff9999'); }
+}
+
+function mostrar(id, txt, color) {
+  const el = document.getElementById(id);
+  el.style.color = color; el.textContent = txt;
+  setTimeout(()=>el.textContent='', 4000);
+}
+
+window.addEventListener('load', initQZ);
+
+async function guardarNormal() {
+  const v = document.getElementById('nom-normal').value.trim();
+  if (!v) { alert('Escribe el nombre'); return; }
+  const fd = new FormData(); fd.append('impresora_normal', v);
+  await fetch('/impresion/config_normal', { method:'POST', body:fd });
+  localStorage.setItem('pl_impresora_normal', v);
+  mostrar('msg-normal', '✅ Guardado', '#88ff88');
+}
+
+async function probarNormal() {
+  const nombre = document.getElementById('nom-normal').value.trim();
+  if (!nombre) { alert('Primero guarda la impresora'); return; }
+  if (!_qzOk)  { alert('QZ Tray no conectado'); return; }
+  try {
+    const cfg = qz.configs.create(nombre, {
+      size: { width: 8.5, height: 11, units: 'in' },
+      margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 }
+    });
+    const html = `<div style="font-family:Arial,sans-serif;font-size:14px;padding:20px;text-align:center">
+      <h2>PAQUETELLEGUE — Multipaqueteria</h2>
+      <hr/>
+      <h3>*** PRUEBA IMPRESORA NORMAL ***</h3>
+      <p>Carta / Letter — Invoice Internacional</p>
+      <p>Impresora configurada correctamente</p>
+    </div>`;
+    await qz.print(cfg, [{type:'pixel',format:'html',flavor:'plain',data:html}]);
+    mostrar('msg-normal', '✅ Impreso', '#88ff88');
+  } catch(e) { mostrar('msg-normal', '❌ '+e.message, '#ff9999'); }
+}
+</script>
+{% endblock %}

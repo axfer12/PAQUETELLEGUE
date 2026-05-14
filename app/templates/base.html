@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#C9A84C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PAQUETELLEGUE">
+<meta name="mobile-web-app-capable" content="yes">
+<title>{% block title %}PAQUETELLEGUE{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logo_navbar.png') }}">
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<nav class="navbar">
+  <div class="nav-brand">
+    <a href="{{ url_for('guias.nueva') }}" style="display:flex;align-items:center;text-decoration:none">
+      <img src="{{ url_for('static', filename='img/logo_navbar.png') }}" alt="PAQUETELLEGUE" style="height:38px;width:auto;object-fit:contain"/>
+    </a>
+  </div>
+
+  {# Navbar desktop #}
+  <div class="nav-links" id="nav-links-desktop">
+    <a href="{{ url_for('guias.nueva') }}"       class="nav-link {% if request.endpoint == 'guias.nueva' %}active{% endif %}">✚ Nueva Guia</a>
+    <a href="{{ url_for('guias.historial') }}"   class="nav-link {% if request.endpoint == 'guias.historial' %}active{% endif %}">📋 Historial</a>
+    <a href="{{ url_for('clientes.lista') }}"    class="nav-link {% if 'clientes' in (request.endpoint or '') %}active{% endif %}">👥 Clientes</a>
+    <a href="{{ url_for('admin.corte') }}"       class="nav-link {% if request.endpoint == 'admin.corte' %}active{% endif %}">✂️ Corte</a>
+    {% if current_user.is_supervisor or current_user.is_admin %}
+    <a href="{{ url_for('cancelaciones.lista') }}" class="nav-link {% if request.endpoint == 'cancelaciones.lista' %}active{% endif %}" style="position:relative">
+      🗑️ Cancelaciones
+      {% if cancelaciones_pendientes > 0 %}
+      <span style="background:#ff4444;color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:4px;font-weight:700">{{ cancelaciones_pendientes }}</span>
+      {% endif %}
+    </a>
+    {% endif %}
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('admin.reportes') }}"  class="nav-link {% if request.endpoint == 'admin.reportes' %}active{% endif %}">📊 Reportes</a>
+    <a href="{{ url_for('admin.index') }}"     class="nav-link {% if request.endpoint == 'admin.index' %}active{% endif %}">⚙️ Admin</a>
+    {% endif %}
+  </div>
+
+  <div class="nav-user">
+    {% if current_user.is_admin_global %}
+    <span style="font-size:11px;color:var(--text-sub);margin-right:8px;display:flex;align-items:center;gap:4px">
+      🏪 <a href="{{ url_for('admin.sucursales') }}" style="color:var(--accent);text-decoration:none;font-weight:600">
+        {{ current_user.sucursal_nombre if current_user.sucursal_nombre else 'Global' }}
+      </a>
+    </span>
+    {% endif %}
+    <a href="{{ url_for('cuenta.index') }}" class="nav-user-link nav-hide-mobile">👤 {{ current_user.nombre }}</a>
+    <a href="{{ url_for('auth.logout') }}" class="btn-logout nav-hide-mobile">Salir</a>
+    {# Botón hamburguesa solo móvil #}
+    <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMenu()" aria-label="Menú">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+{# Menú móvil desplegable #}
+<div class="nav-mobile-menu" id="nav-mobile-menu">
+  <div class="nav-mobile-user">
+    <span style="color:var(--accent);font-weight:700">👤 {{ current_user.nombre }}</span>
+    {% if current_user.is_admin_global %}
+    <span style="font-size:12px;color:var(--text-sub)">🏪 {{ current_user.sucursal_nombre or 'Global' }}</span>
+    {% endif %}
+  </div>
+  <a href="{{ url_for('guias.nueva') }}"       class="nav-mobile-link {% if request.endpoint == 'guias.nueva' %}active{% endif %}">✚ Nueva Guía</a>
+  <a href="{{ url_for('guias.historial') }}"   class="nav-mobile-link {% if request.endpoint == 'guias.historial' %}active{% endif %}">📋 Historial</a>
+  <a href="{{ url_for('clientes.lista') }}"    class="nav-mobile-link {% if 'clientes' in (request.endpoint or '') %}active{% endif %}">👥 Clientes</a>
+  <a href="{{ url_for('admin.corte') }}"       class="nav-mobile-link {% if request.endpoint == 'admin.corte' %}active{% endif %}">✂️ Corte</a>
+  {% if current_user.is_supervisor or current_user.is_admin %}
+  <a href="{{ url_for('cancelaciones.lista') }}" class="nav-mobile-link {% if request.endpoint == 'cancelaciones.lista' %}active{% endif %}">
+    🗑️ Cancelaciones
+    {% if cancelaciones_pendientes > 0 %}
+    <span style="background:#ff4444;color:#fff;border-radius:10px;font-size:10px;padding:2px 8px;margin-left:6px;font-weight:700">{{ cancelaciones_pendientes }}</span>
+    {% endif %}
+  </a>
+  {% endif %}
+  {% if current_user.is_admin %}
+  <a href="{{ url_for('admin.reportes') }}"  class="nav-mobile-link {% if request.endpoint == 'admin.reportes' %}active{% endif %}">📊 Reportes</a>
+  <a href="{{ url_for('admin.index') }}"     class="nav-mobile-link {% if request.endpoint == 'admin.index' %}active{% endif %}">⚙️ Admin</a>
+  {% endif %}
+  <a href="{{ url_for('cuenta.index') }}"    class="nav-mobile-link">⚙️ Mi cuenta</a>
+  <a href="{{ url_for('auth.logout') }}"     class="nav-mobile-link" style="color:#ff6666">🚪 Cerrar sesión</a>
+</div>
+<div class="nav-mobile-overlay" id="nav-mobile-overlay" onclick="toggleMenu()"></div>
+{% endif %}
+
+<main class="main-content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div style="margin-bottom:12px;padding:10px 16px;border-radius:6px;font-size:13px;{% if cat == 'error' %}background:#3a0000;color:#ff9999;border:1px solid #660000{% else %}background:#0a2a0a;color:#88ff88;border:1px solid #006600{% endif %}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+
+{# Barra de navegación inferior para móvil #}
+{% if current_user.is_authenticated %}
+<nav class="nav-bottom">
+  <a href="{{ url_for('guias.nueva') }}"       class="nav-bottom-item {% if request.endpoint == 'guias.nueva' %}active{% endif %}">
+    <span class="nav-bottom-icon">✚</span>
+    <span class="nav-bottom-label">Nueva</span>
+  </a>
+  <a href="{{ url_for('guias.historial') }}"   class="nav-bottom-item {% if request.endpoint == 'guias.historial' %}active{% endif %}">
+    <span class="nav-bottom-icon">📋</span>
+    <span class="nav-bottom-label">Historial</span>
+  </a>
+  <a href="{{ url_for('clientes.lista') }}"    class="nav-bottom-item {% if 'clientes' in (request.endpoint or '') %}active{% endif %}">
+    <span class="nav-bottom-icon">👥</span>
+    <span class="nav-bottom-label">Clientes</span>
+  </a>
+  <a href="{{ url_for('admin.corte') }}"       class="nav-bottom-item {% if request.endpoint == 'admin.corte' %}active{% endif %}">
+    <span class="nav-bottom-icon">✂️</span>
+    <span class="nav-bottom-label">Corte</span>
+  </a>
+  <a href="#" onclick="toggleMenu();return false" class="nav-bottom-item">
+    <span class="nav-bottom-icon">☰</span>
+    <span class="nav-bottom-label">Más</span>
+  </a>
+</nav>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.min.js"></script>
+<script src="{{ url_for('static', filename='js/qz_print.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+function toggleMenu(){
+  const menu    = document.getElementById('nav-mobile-menu');
+  const overlay = document.getElementById('nav-mobile-overlay');
+  const ham     = document.getElementById('nav-hamburger');
+  const open    = menu.classList.toggle('open');
+  overlay.classList.toggle('open', open);
+  ham.classList.toggle('open', open);
+}
+// Cerrar menú al navegar
+document.querySelectorAll('.nav-mobile-link').forEach(l => l.addEventListener('click', () => {
+  document.getElementById('nav-mobile-menu').classList.remove('open');
+  document.getElementById('nav-mobile-overlay').classList.remove('open');
+  document.getElementById('nav-hamburger').classList.remove('open');
+}));
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
