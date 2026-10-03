@@ -178,13 +178,13 @@ _DEBUG = True  # siempre log a archivo
 def _log(m):
     import sys, datetime
     ts = datetime.datetime.now().strftime("%H:%M:%S")
-    print(f"[{ts}][SKY] {m}", flush=True, file=sys.stderr)
+    print(f"[{ts}][API] {m}", flush=True, file=sys.stderr)
     try:
         log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "data", "api_debug.log")
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
         with open(log_path, "a", encoding="utf-8") as lf:
-            lf.write(f"[{ts}][SKY] {m}\n")
+            lf.write(f"[{ts}][API] {m}\n")
     except Exception:
         pass
 
@@ -484,6 +484,9 @@ def _parsear_rates_ei(rates_raw, qid) -> list[dict]:
         except: arancel = 0.0
         pf = (r.get("printing_format") or "letter").lower()
         _log(f"EI rate OK: {carrier}/{servicio} ${precio} pf={pf} success={r.get('success')}")
+        # Capturar qué pagadores permite esta tarifa (para respetar restricción al crear guía)
+        _cpp_raw = r.get("customs_payment_payer")
+        _cpp_entry = _cpp_raw if isinstance(_cpp_raw, list) and _cpp_raw else None
         entry = {
             "carrier": carrier, "servicio": servicio, "precio": precio,
             "dias": dias, "arancel": arancel,
@@ -492,6 +495,7 @@ def _parsear_rates_ei(rates_raw, qid) -> list[dict]:
             "quotation_id": qid, "status": status,
             "printing_format": pf,
             "proveedor": "ei",
+            "customs_payment_payer": _cpp_entry,  # ej: ["sender"] o ["sender","recipient"]
         }
         if pf == "thermal":
             rates_thermal.append(entry)
@@ -857,24 +861,28 @@ def crear_guia(
                 if _p_price > 200 and _tc3 > 1:
                     _p_price = round(_p_price / _tc3, 2)
                 _products_parcel.append({
-                    "description":    _desc_es[:60],
-                    "description_en": _desc_en[:60],
-                    "hs_code":        _p_hs,
-                    "quantity":       _qty,
-                    "price":          round(_p_price, 2),
-                    "weight":         float(_p.get("weight") or _p.get("peso") or round(float(peso)/_qty, 2)),
-                    "country_code":   (_p.get("country_code") or _p.get("country_of_origin") or pais_origen or "MX").upper(),
+                    "description":         _desc_es[:60],
+                    "description_en":      _desc_en[:60],
+                    "hs_code":             _p_hs,
+                    "quantity":            _qty,
+                    "price":               round(_p_price, 2),
+                    "weight":              float(_p.get("weight") or _p.get("peso") or round(float(peso)/_qty, 2)),
+                    "country_code":        (_p.get("country_code") or _p.get("country_of_origin") or pais_origen or "MX").upper(),
+                    "product_type":        _p.get("product_type", "goods"),
+                    "product_type_code":   _p.get("product_type_code", "goods"),
                 })
         else:
             _en = (desc_en or "").strip() or DESC_EN.get(_cat_key_fb, f"General merchandise {contenido or ''}")
             _products_parcel = [{
-                "description":    str(contenido or "General merchandise")[:60],
-                "description_en": _en[:60],
-                "hs_code":        _hs_fallback,
-                "quantity":       1,
-                "price":          round(_valor_mxn_para_ei, 2),
-                "weight":         float(peso),
-                "country_code":   (pais_origen or "MX").upper(),
+                "description":        str(contenido or "General merchandise")[:60],
+                "description_en":     _en[:60],
+                "hs_code":            _hs_fallback,
+                "quantity":           1,
+                "price":              round(_valor_mxn_para_ei, 2),
+                "weight":             float(peso),
+                "country_code":       (pais_origen or "MX").upper(),
+                "product_type":       "goods",
+                "product_type_code":  "goods",
             }]
 
         _SKY_PURPOSE_MAP = {
@@ -885,7 +893,20 @@ def crear_guia(
             "repair":     "return_of_goods",
         }
         _purpose_sky = _SKY_PURPOSE_MAP.get(str(shipment_purpose).lower(), "goods")
-        _log(f"INT shipment_purpose={_purpose_sky} customs_payment_payer={customs_payment_payer}")
+        # Determinar customs_payment_payer correcto según lo que la tarifa permite.
+        # rate_allowed_payers puede llegar como kwarg desde api.py/crear_envio.
+        # Si la tarifa solo permite "sender", forzarlo independientemente de la selección del usuario.
+        _rate_allowed = kwargs.get("rate_allowed_payers", None)
+        _cpp = str(customs_payment_payer or "recipient").strip().lower()
+        if _rate_allowed:
+            # Normalizar la lista de pagadores permitidos
+            _allowed_norm = [str(p).strip().lower() for p in _rate_allowed]
+            if _cpp not in _allowed_norm:
+                # El payer solicitado no está permitido — usar el primero disponible
+                _cpp = _allowed_norm[0] if _allowed_norm else "sender"
+                _log(f"INT customs_payment_payer corregido de '{customs_payment_payer}' a '{_cpp}' (rate permite: {_allowed_norm})")
+        _cpp_final = _cpp  # valor validado
+        _log(f"INT shipment_purpose={_purpose_sky} customs_payment_payer={_cpp_final}")
 
         # Estructura según Skydropx: consignment_note y package_type a nivel raíz
         # addresses solo llevan name/street1/company/phone/email/reference
@@ -893,7 +914,7 @@ def crear_guia(
         payload_int = {"shipment": {
             "quotation_id":          quotation_id,
             "rate_id":               rate_id,
-            "customs_payment_payer": customs_payment_payer,
+            "customs_payment_payer": _cpp_final,
             "shipment_purpose":      _purpose_sky,
             "printing_format":       "standard",
             "consignment_note":      _cn_code,
@@ -931,8 +952,9 @@ def crear_guia(
             "products": _products_parcel,
         }}
         _log(f"EI PARCEL declared_value={_valor_mxn_para_ei} tipo={type(_valor_mxn_para_ei)}")
+        _log(f"INT PRODUCTS: {json.dumps(_products_parcel)}")
         _log(f"POST /shipments (EI internacional)")
-        _log(f"PAYLOAD INT COMPLETO: {json.dumps(payload_int)[:2000]}")
+        _log(f"PAYLOAD INT COMPLETO: {json.dumps(payload_int)[:3000]}")
         try:
             resp = _ei_request("POST", "/shipments", data=payload_int, timeout=90)
         except APIError as _ae:
@@ -1096,7 +1118,8 @@ def rastrear_envio(tracking_number: str, carrier_name: str = "") -> dict:
 def _crear_guia_ei(quotation_id, rate_id, remitente, destinatario, paquete,
                    contenido="Mercancía", shipment_purpose="personal",
                    customs_payment_payer="recipient",
-                   printing_format="letter") -> dict:
+                   printing_format="letter",
+                   rate_allowed_payers=None) -> dict:
     """Crea envío INTERNACIONAL en Envíos Internacionales."""
     _log(f"CREAR GUIA EI qid={quotation_id} rid={rate_id}")
 
@@ -1128,8 +1151,11 @@ def _crear_guia_ei(quotation_id, rate_id, remitente, destinatario, paquete,
         "repair":     "gift",
     }
     _purpose_ei = _PURPOSE_MAP_EI.get(str(shipment_purpose).lower(), "gift")
-    # customs_payment_payer: EI usa "sender" o "recipient"
-    _payer_ei = "recipient" if str(customs_payment_payer).lower() in ("recipient","destinatario") else "sender"
+    # customs_payment_payer: Estafeta y la mayoría de carriers EI SOLO permiten "sender".
+    # Siempre forzamos "sender" para evitar 422 "Pagador de aranceles no permitido".
+    # Si en el futuro hay carriers que permitan "recipient", se puede personalizar aquí.
+    _payer_ei = "sender"
+    _log(f"EI customs_payment_payer forzado a 'sender' (input era '{customs_payment_payer}', rate_allowed={rate_allowed_payers})")
 
     # Valor declarado y precio por producto
     _valor = float(paquete.get("valor_declarado", 0) or 0) or 1.0
@@ -1141,29 +1167,59 @@ def _crear_guia_ei(quotation_id, rate_id, remitente, destinatario, paquete,
     # Productos para aduana — mínimo requerido por EI
     _INVALID_HS = {"", "9999.99", "9999.000000", None}
     _productos_factura = paquete.get("productos_factura", [])
+    # EI requiere product_type_code (UNSPSC) y product_type_name — NO "product_type".
+    # Usamos el mismo código UNSPSC que ya calculamos para consignment_note (_cn_code).
+    # Mapa UNSPSC → nombre en inglés para product_type_name
+    _UNSPSC_NAME_MAP = {
+        "14111812": "Documents and stationery",
+        "53103001": "Clothing and garments",
+        "53102511": "Footwear",
+        "60141200": "Toys and games",
+        "43211500": "Computers and peripherals",
+        "44121618": "Books",
+        "46182001": "Sports equipment",
+        "52152003": "Jewelry",
+        "50000000": "Food and beverage",
+        "70111800": "Home decor",
+        "31162700": "Electronic components",
+        "25172700": "Automotive parts",
+        "51101512": "Pharmaceuticals",
+        "53102800": "Bags and luggage",
+    }
+    _prod_type_code = _cn_code  # UNSPSC code ya calculado según contenido
+    _prod_type_name = _UNSPSC_NAME_MAP.get(_prod_type_code, "General merchandise")
+    _log(f"EI product_type_code={_prod_type_code} product_type_name={_prod_type_name}")
     if _productos_factura:
         _products = []
         for _p in _productos_factura:
             _p_desc_en = (_p.get("description_en") or _desc_en or "General merchandise")[:60]
             _p_hs = _p.get("hs_code","") if _p.get("hs_code","") not in _INVALID_HS else _hs
+            _p_ptc = _p.get("product_type_code", _prod_type_code)
+            _p_ptn = _p.get("product_type_name", _UNSPSC_NAME_MAP.get(_p_ptc, _prod_type_name))
             _products.append({
-                "description":    str(_p.get("descripcion") or _p.get("description") or contenido)[:60],
-                "description_en": _p_desc_en,
-                "quantity":       int(_p.get("cantidad") or _p.get("quantity") or 1),
-                "price":          float(_p.get("price") or _p.get("precio") or _valor),
-                "weight":         float(_p.get("weight") or _p.get("peso") or _peso),
-                "hs_code":        _p_hs,
-                "country_code":   str(_p.get("country_code") or "MX"),
+                "description":       str(_p.get("descripcion") or _p.get("description") or contenido)[:60],
+                "description_en":    _p_desc_en,
+                "quantity":          int(_p.get("cantidad") or _p.get("quantity") or 1),
+                "price":             float(_p.get("price") or _p.get("precio") or _valor),
+                "weight":            float(_p.get("weight") or _p.get("peso") or _peso),
+                "hs_code":           _p_hs,
+                "hs_code_description": str(_p_desc_en)[:60],
+                "country_code":      str(_p.get("country_code") or "MX"),
+                "product_type_code": _p_ptc,
+                "product_type_name": _p_ptn,
             })
     else:
         _products = [{
-            "description":    str(contenido or "General merchandise")[:60],
-            "description_en": str(_desc_en or "General merchandise")[:60],
-            "quantity":       1,
-            "price":          _valor,
-            "weight":         _peso,
-            "hs_code":        _hs,
-            "country_code":   "MX",
+            "description":       str(contenido or "General merchandise")[:60],
+            "description_en":    str(_desc_en or "General merchandise")[:60],
+            "quantity":          1,
+            "price":             _valor,
+            "weight":            _peso,
+            "hs_code":           _hs,
+            "hs_code_description": str(_desc_en or "General merchandise")[:60],
+            "country_code":      "MX",
+            "product_type_code": _prod_type_code,
+            "product_type_name": _prod_type_name,
         }]
 
     payload = {"shipment": {
@@ -1216,7 +1272,9 @@ def _crear_guia_ei(quotation_id, rate_id, remitente, destinatario, paquete,
 
     # (campos opcionales eliminados del nivel raíz — EI los requiere solo en parcels)
 
-    _log(f"EI SHIPMENT PAYLOAD: {json.dumps(payload)[:2000]}")
+    _log(f"EI rate_allowed_payers={rate_allowed_payers} customs_input={customs_payment_payer} payer_final={_payer_ei}")
+    _log(f"EI PRODUCTS: {json.dumps(_products)}")
+    _log(f"EI SHIPMENT PAYLOAD: {json.dumps(payload)[:3000]}")
     resp  = _ei_request("POST", "/shipments", data=payload)
     _log(f"EI GUIA RESP: {json.dumps(resp)[:1000]}")
 
@@ -1251,7 +1309,8 @@ def crear_envio(quotation_id, rate_id, remitente: dict,
                 valor_declarado=None, valor_declarado_usd=0.0,
                 customs_payment_payer="recipient",
                 shipment_purpose="personal",
-                printing_format="letter") -> dict:
+                printing_format="letter",
+                rate_allowed_payers=None) -> dict:
     """
     Interfaz de alto nivel: recibe dicts remitente/destinatario/paquete
     y los desempaca para llamar a crear_guia().
@@ -1263,7 +1322,22 @@ def crear_envio(quotation_id, rate_id, remitente: dict,
     pais_orig = remitente.get("pais","MX")
     es_int = _es_internacional(pais_orig, pais_dest)
 
-    # Siempre Skydropx — EI desactivado
+    # Internacionales → EI (EnvíoInternacional)
+    if es_int:
+        return _crear_guia_ei(
+            quotation_id=quotation_id,
+            rate_id=rate_id,
+            remitente=remitente,
+            destinatario=destinatario,
+            paquete=paquete,
+            contenido=contenido,
+            shipment_purpose=shipment_purpose,
+            customs_payment_payer=customs_payment_payer,
+            printing_format=printing_format,
+            rate_allowed_payers=rate_allowed_payers,
+        )
+
+    # Nacionales → Skydropx
     # email_origen: usar el del remitente, o fallback genérico
     email_origen = (remitente.get("email") or "").strip()
     if not email_origen:
@@ -1322,4 +1396,5 @@ def crear_envio(quotation_id, rate_id, remitente: dict,
         customs_payment_payer=customs_payment_payer,
         shipment_purpose=shipment_purpose,
         productos_factura=paquete.get("productos_factura", []),
+        rate_allowed_payers=rate_allowed_payers,
     )
