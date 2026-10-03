@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Promociones - Admin{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">🎟️ Promociones y Descuentos</h2>
+  <a href="{{ url_for('admin.index') }}" class="btn btn-sm">← Admin</a>
+</div>
+
+<!-- Formulario nueva promoción -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-title">➕ Nueva Promoción</div>
+  <form method="POST" action="{{ url_for('admin.nueva_promocion') }}">
+    <div class="grid-2">
+      <div class="form-group">
+        <label>Nombre *</label>
+        <input name="nombre" class="form-input" placeholder="Ej: Descuento Verano" required/>
+      </div>
+      <div class="form-group">
+        <label>Código (opcional)</label>
+        <input name="codigo" class="form-input" placeholder="Ej: VERANO20" style="text-transform:uppercase"/>
+      </div>
+      <div class="form-group">
+        <label>Tipo de descuento</label>
+        <select name="tipo" class="form-input">
+          <option value="porcentaje">Porcentaje (%)</option>
+          <option value="fijo">Monto fijo ($)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Valor</label>
+        <input name="valor" type="number" step="0.01" min="0" class="form-input" placeholder="Ej: 20 (para 20% o $20)"/>
+      </div>
+      <div class="form-group">
+        <label>Cliente específico (opcional)</label>
+        <select name="cliente_id" class="form-input">
+          <option value="">— Todos los clientes —</option>
+          {% for c in clientes %}
+          <option value="{{ c.id }}">{{ c.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Fecha inicio (opcional)</label>
+        <input name="fecha_inicio" type="date" class="form-input"/>
+      </div>
+      <div class="form-group">
+        <label>Fecha fin (opcional)</label>
+        <input name="fecha_fin" type="date" class="form-input"/>
+      </div>
+    </div>
+    <button type="submit" class="btn" style="margin-top:10px">💾 Guardar Promoción</button>
+  </form>
+</div>
+
+<!-- Lista de promociones -->
+<div class="card">
+  <div class="card-title">📋 Promociones Registradas ({{ promociones|length }})</div>
+  {% if not promociones %}
+  <p style="color:var(--text-sub);text-align:center;padding:20px">No hay promociones registradas aún</p>
+  {% else %}
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:8px;color:var(--accent)">Nombre</th>
+          <th style="text-align:left;padding:8px;color:var(--accent)">Código</th>
+          <th style="text-align:left;padding:8px;color:var(--accent)">Descuento</th>
+          <th style="text-align:left;padding:8px;color:var(--accent)">Cliente</th>
+          <th style="text-align:left;padding:8px;color:var(--accent)">Vigencia</th>
+          <th style="text-align:left;padding:8px;color:var(--accent)">Estado</th>
+          <th style="text-align:left;padding:8px;color:var(--accent)">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in promociones %}
+        <tr style="border-bottom:1px solid var(--border);{% if not p.activa %}opacity:0.5{% endif %}">
+          <td style="padding:8px">{{ p.nombre }}</td>
+          <td style="padding:8px">
+            {% if p.codigo %}
+            <span style="background:var(--accent);color:#000;padding:2px 8px;border-radius:4px;font-weight:700;font-size:12px">{{ p.codigo }}</span>
+            {% else %}
+            <span style="color:var(--text-sub)">Sin código</span>
+            {% endif %}
+          </td>
+          <td style="padding:8px">
+            {% if p.tipo == 'porcentaje' %}
+            <span style="color:var(--green)">{{ p.valor }}%</span>
+            {% else %}
+            <span style="color:var(--green)">${{ "%.2f"|format(p.valor) }}</span>
+            {% endif %}
+          </td>
+          <td style="padding:8px">{{ p.cliente_nombre or '— Todos —' }}</td>
+          <td style="padding:8px;font-size:11px">
+            {% if p.fecha_inicio or p.fecha_fin %}
+            {{ p.fecha_inicio or '∞' }} → {{ p.fecha_fin or '∞' }}
+            {% else %}
+            <span style="color:var(--text-sub)">Sin límite</span>
+            {% endif %}
+          </td>
+          <td style="padding:8px">
+            {% if p.activa %}
+            <span style="color:var(--green)">✅ Activa</span>
+            {% else %}
+            <span style="color:var(--error)">❌ Inactiva</span>
+            {% endif %}
+          </td>
+          <td style="padding:8px">
+            <form method="POST" action="{{ url_for('admin.toggle_promocion', pid=p.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-sm" style="font-size:11px">
+                {% if p.activa %}Pausar{% else %}Activar{% endif %}
+              </button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.eliminar_promocion', pid=p.id) }}" style="display:inline"
+                  onsubmit="return confirm('¿Eliminar esta promoción?')">
+              <button type="submit" class="btn btn-sm" style="font-size:11px;background:var(--error);color:#fff;border-color:var(--error)">
+                🗑️
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:16px;background:rgba(212,175,55,0.05)">
+  <div class="card-title" style="font-size:13px">💡 Cómo funciona</div>
+  <p style="font-size:12px;color:var(--text-sub);margin:0">
+    El operador puede ingresar el <strong>código de descuento</strong> al generar una guía. Si el código existe y está activo,
+    se aplica automáticamente el descuento al precio final. Si no se requiere código, el descuento se aplica a todos.
+  </p>
+</div>
+{% endblock %}

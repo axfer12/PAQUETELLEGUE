@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#C9A84C">
+<title>Factura tu Envío — PAQUETELLEGUE</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --gold:#C9A84C;--gold2:#E8C96A;--dark:#0A0A0A;--dark2:#111;
+  --dark3:#1A1A1A;--dark4:#242424;--border:#2A2A2A;
+  --text:#F0EDE6;--muted:#7A7672;--green:#3D9970;--red:#e05252;
+  --r:10px;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.6;min-height:100vh;}
+
+/* HEADER */
+header{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,10,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:64px;}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--gold);text-decoration:none;display:flex;flex-direction:column;line-height:1.1;}
+.logo span{color:var(--muted);font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:1.5px;font-weight:400;}
+.header-links{display:flex;gap:1.5rem;align-items:center;}
+.header-links a{color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;letter-spacing:.5px;transition:color .2s;}
+.header-links a:hover{color:var(--gold);}
+
+/* HERO */
+.hero{padding:120px 2rem 56px;text-align:center;background:radial-gradient(ellipse 70% 50% at 50% 0%,#0d1100 0%,transparent 65%);}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(61,153,112,.12);border:1px solid rgba(61,153,112,.3);color:#5ecfa0;font-size:11px;font-weight:600;letter-spacing:2px;padding:5px 16px;border-radius:100px;margin-bottom:1.5rem;text-transform:uppercase;}
+.dot-green{width:6px;height:6px;border-radius:50%;background:#5ecfa0;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(44px,7vw,80px);line-height:.95;letter-spacing:4px;margin-bottom:1.25rem;}
+h1 em{color:var(--gold);font-style:normal;}
+.hero-sub{font-size:16px;color:var(--muted);font-weight:300;max-width:480px;margin:0 auto 2.5rem;line-height:1.7;}
+
+/* STEPS */
+.steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:2.5rem;flex-wrap:wrap;}
+.step{display:flex;align-items:center;gap:10px;padding:10px 20px;background:var(--dark3);border:1px solid var(--border);position:relative;}
+.step:first-child{border-radius:8px 0 0 8px;}
+.step:last-child{border-radius:0 8px 8px 0;}
+.step.active{background:rgba(201,168,76,.1);border-color:rgba(201,168,76,.4);}
+.step.done{background:rgba(61,153,112,.08);border-color:rgba(61,153,112,.3);}
+.step-n{width:24px;height:24px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.step.active .step-n{background:var(--gold);color:#000;}
+.step.done .step-n{background:var(--green);color:#fff;}
+.step-t{font-size:12px;font-weight:600;letter-spacing:.5px;color:var(--muted);}
+.step.active .step-t{color:var(--gold);}
+.step.done .step-t{color:#5ecfa0;}
+.sep{width:20px;height:1px;background:var(--border);flex-shrink:0;}
+
+/* MAIN */
+.main{max-width:680px;margin:0 auto;padding:0 1.5rem 6rem;}
+.card{background:var(--dark2);border:1px solid var(--border);border-radius:14px;padding:2rem;margin-bottom:1.5rem;}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--gold);margin-bottom:1.25rem;display:flex;align-items:center;gap:10px;}
+.card-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* FORM */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.fg:last-child{margin-bottom:0;}
+label{font-size:11px;font-weight:600;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;}
+input,select{background:var(--dark3);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;width:100%;transition:border-color .2s;-webkit-appearance:none;}
+input:focus,select:focus{outline:none;border-color:var(--gold);}
+input::placeholder{color:var(--muted);}
+input.valid{border-color:var(--green);}
+input.invalid{border-color:var(--red);}
+select option{background:#1a1a1a;}
+.hint{font-size:11px;margin-top:4px;min-height:14px;}
+.hint.ok{color:#5ecfa0;}
+.hint.err{color:var(--red);}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* BTN */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 24px;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;letter-spacing:.5px;border:none;cursor:pointer;transition:all .2s;text-decoration:none;}
+.btn-gold{background:var(--gold);color:#000;width:100%;font-size:16px;padding:15px;}
+.btn-gold:hover{background:var(--gold2);}
+.btn-gold:disabled{opacity:.45;cursor:not-allowed;}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+.btn-green{background:var(--green);color:#fff;width:100%;font-size:15px;padding:14px;}
+
+/* RESULTADO BÚSQUEDA */
+.envio-card{background:var(--dark3);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;cursor:pointer;transition:all .15s;margin-bottom:.6rem;}
+.envio-card:hover{border-color:var(--gold);}
+.envio-card.selected{border-color:var(--gold);background:rgba(201,168,76,.07);}
+.envio-card.no-facturable{opacity:.5;cursor:not-allowed;}
+.envio-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;}
+.envio-guia{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--gold);}
+.envio-total{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;text-align:right;}
+.envio-total small{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--muted);display:block;font-weight:400;letter-spacing:0;}
+.envio-meta{display:flex;gap:1.5rem;margin-top:.6rem;flex-wrap:wrap;}
+.meta-item{font-size:12px;color:var(--muted);}
+.meta-item strong{color:var(--text);font-weight:500;}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 10px;border-radius:100px;letter-spacing:1px;text-transform:uppercase;}
+.badge-ok{background:rgba(61,153,112,.15);color:#5ecfa0;border:1px solid rgba(61,153,112,.3);}
+.badge-no{background:rgba(224,82,82,.1);color:#e07a7a;border:1px solid rgba(224,82,82,.2);}
+
+/* LOADING */
+.spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading{text-align:center;padding:2rem;color:var(--muted);}
+
+/* ALERT */
+.alert{padding:1rem 1.25rem;border-radius:var(--r);font-size:14px;margin-bottom:1rem;}
+.alert-err{background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.25);color:#ff9090;}
+.alert-ok{background:rgba(61,153,112,.08);border:1px solid rgba(61,153,112,.3);color:#5ecfa0;}
+
+/* SUCCESS */
+.success-box{text-align:center;padding:2.5rem;}
+.success-icon{font-size:56px;margin-bottom:1rem;}
+.success-uuid{background:var(--dark3);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-family:monospace;font-size:13px;color:var(--gold);letter-spacing:1px;margin:1rem 0;word-break:break-all;}
+.dl-btns{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1.5rem;}
+.btn-dl{padding:10px 22px;border-radius:8px;font-weight:700;font-size:13px;text-decoration:none;letter-spacing:.5px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-pdf{background:var(--red);color:#fff;}
+.btn-xml{background:#2d6a8f;color:#fff;}
+.btn-nueva{background:var(--dark3);color:var(--text);border:1px solid var(--border);}
+
+/* AVISO */
+.aviso{background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.2);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;font-size:13px;color:var(--muted);}
+.aviso strong{color:var(--gold);}
+
+footer{border-top:1px solid var(--border);padding:1.75rem;text-align:center;color:var(--muted);font-size:13px;}
+footer strong{color:var(--gold);font-family:'Bebas Neue',sans-serif;letter-spacing:2px;font-size:15px;}
+footer a{color:var(--gold);text-decoration:none;}
+
+@media(max-width:600px){
+  .steps{gap:0;}.sep{display:none;}
+  .step{padding:8px 12px;border-radius:6px!important;margin:3px;}
+  h1{font-size:44px;}
+  .hero{padding:100px 1rem 40px;}
+  .card{padding:1.25rem;}
+  .grid-2{grid-template-columns:1fr;}
+  header{padding:0 1rem;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <a href="/facturacion" class="logo">PAQUETELLEGUE<span>Portal de Facturación Electrónica</span></a>
+  <div class="header-links">
+    <a href="/cotizar">Cotizar</a>
+    <a href="tel:4966880357">496 688 0357</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-badge"><div class="dot-green"></div> CFDI 4.0 · Timbrado inmediato</div>
+  <h1>FACTURA TU<br>ENVÍO <em>HOY</em></h1>
+  <p class="hero-sub">Solicita tu factura electrónica en menos de 2 minutos. Válida todo el mes natural.</p>
+  <div class="steps" id="steps">
+    <div class="step active" id="step1"><div class="step-n">1</div><div class="step-t">Buscar envío</div></div>
+    <div class="sep"></div>
+    <div class="step" id="step2"><div class="step-n">2</div><div class="step-t">Datos fiscales</div></div>
+    <div class="sep"></div>
+    <div class="step" id="step3"><div class="step-n">3</div><div class="step-t">Descargar</div></div>
+  </div>
+</section>
+
+<main class="main">
+
+  <!-- AVISO PERIODO -->
+  <div class="aviso">
+    ⚠️ <strong>Periodo de facturación:</strong> Puedes solicitar tu factura durante el <strong>mes natural</strong> en que realizaste tu envío. Pasado el mes, ya no es posible timbrar.
+  </div>
+
+  <!-- PASO 1: BUSCAR ENVÍO -->
+  <div id="panel-buscar" class="card">
+    <div class="card-title">Buscar tu envío</div>
+    <div class="fg">
+      <label>Número de guía, ticket o teléfono</label>
+      <input type="text" id="termino" placeholder="Ej: 871870756422, 4961234567, JUAN PEREZ"
+             onkeydown="if(event.key==='Enter') buscar()">
+      <div class="hint" id="hint-buscar">Puedes buscar por número de guía, teléfono o nombre del destinatario</div>
+    </div>
+    <button class="btn btn-gold" onclick="buscar()" id="btn-buscar" style="margin-top:.5rem">
+      🔍 Buscar envío
+    </button>
+    <div id="resultado-buscar" style="margin-top:1.25rem"></div>
+  </div>
+
+  <!-- PASO 2: DATOS FISCALES -->
+  <div id="panel-fiscal" class="card" style="display:none">
+    <div class="card-title">Datos fiscales</div>
+
+    <!-- Resumen del envío seleccionado -->
+    <div id="resumen-envio" style="background:var(--dark3);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1.5rem;"></div>
+
+    <div class="fg">
+      <label>RFC *</label>
+      <input type="text" id="rfc" placeholder="XAXX010101000" maxlength="13"
+             oninput="this.value=this.value.toUpperCase();validarRFC()"
+             onblur="validarRFC()">
+      <div class="hint" id="hint-rfc">Persona física: 13 caracteres · Persona moral: 12 caracteres</div>
+    </div>
+
+    <div class="fg">
+      <label>Razón Social *</label>
+      <input type="text" id="razon_social" placeholder="Como aparece en tu constancia fiscal"
+             oninput="this.value=this.value.toUpperCase()">
+    </div>
+
+    <div class="grid-2">
+      <div class="fg">
+        <label>Código Postal Fiscal *</label>
+        <input type="text" id="cp_fiscal" maxlength="5" placeholder="00000">
+      </div>
+      <div class="fg">
+        <label>Régimen Fiscal *</label>
+        <select id="regimen_fiscal">
+          {% for cod, nombre in regimenes %}
+          <option value="{{ cod }}" {% if cod == '616' %}selected{% endif %}>{{ cod }} – {{ nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="fg">
+        <label>Uso del CFDI *</label>
+        <select id="uso_cfdi">
+          {% for cod, nombre in usos_cfdi %}
+          <option value="{{ cod }}" {% if cod == 'G03' %}selected{% endif %}>{{ cod }} – {{ nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="fg">
+        <label>Forma de Pago *</label>
+        <select id="forma_pago">
+          <option value="01">01 – Efectivo</option>
+          <option value="02">02 – Cheque nominativo</option>
+          <option value="03">03 – Transferencia electrónica (SPEI)</option>
+          <option value="04" selected>04 – Tarjeta de crédito</option>
+          <option value="28">28 – Tarjeta de débito</option>
+          <option value="29">29 – Tarjeta de servicios</option>
+          <option value="99">99 – Por definir</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label>Email para recibir la factura *</label>
+      <input type="email" id="email_factura" placeholder="correo@ejemplo.com">
+    </div>
+
+    <!-- Dirección fiscal opcional -->
+    <div style="margin-top:1rem">
+      <button type="button" onclick="toggleDireccion()" id="btn-dir"
+              style="background:none;border:1px dashed var(--border);color:var(--muted);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;width:100%;transition:all .2s"
+              onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'"
+              onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+        ➕ Agregar dirección fiscal (opcional)
+      </button>
+      <div id="dir-fiscal" style="display:none;margin-top:12px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:6px 10px;background:#0d1000;border-radius:5px;border-left:3px solid var(--gold)">
+          ℹ️ La dirección debe coincidir con tu Constancia de Situación Fiscal. Si no la agregas, solo se usará el CP fiscal.
+        </div>
+        <div class="grid-2">
+          <div class="fg">
+            <label style="font-size:11px">Calle</label>
+            <input type="text" id="dir_calle" placeholder="Nombre de la calle" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="fg">
+            <label style="font-size:11px">Número exterior</label>
+            <input type="text" id="dir_numero_ext" placeholder="110">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="fg">
+            <label style="font-size:11px">Número interior</label>
+            <input type="text" id="dir_numero_int" placeholder="(opcional)">
+          </div>
+          <div class="fg">
+            <label style="font-size:11px">Colonia</label>
+            <input type="text" id="dir_colonia" placeholder="Nombre de colonia" oninput="this.value=this.value.toUpperCase()">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="fg">
+            <label style="font-size:11px">Municipio / Delegación</label>
+            <input type="text" id="dir_municipio" placeholder="Municipio" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="fg">
+            <label style="font-size:11px">Estado</label>
+            <input type="text" id="dir_estado" placeholder="Estado" oninput="this.value=this.value.toUpperCase()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="alert-fiscal" style="margin-top:1rem"></div>
+
+    <div style="background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.15);border-radius:8px;padding:.85rem 1rem;margin-top:1rem;font-size:12px;color:var(--muted);">
+      💡 <strong style="color:var(--gold)">¿Datos incorrectos?</strong>
+      Si cometiste un error, simplemente corrige los campos y vuelve a hacer clic en
+      <em>Generar Factura</em> — el sistema actualizará tu información automáticamente.
+      El <strong>Código Postal fiscal</strong> debe ser exactamente el que aparece en tu
+      <strong>Constancia de Situación Fiscal</strong> del SAT.
+    </div>
+
+    <div style="display:flex;gap:.75rem;margin-top:1rem">
+      <button class="btn btn-outline" onclick="volverBuscar()" style="flex:1">← Cambiar envío</button>
+      <button class="btn btn-gold" onclick="generarCFDI()" id="btn-generar" style="flex:2">
+        🧾 Generar Factura
+      </button>
+    </div>
+  </div>
+
+  <!-- PASO 3: ÉXITO -->
+  <div id="panel-exito" class="card" style="display:none">
+    <div class="success-box">
+      <div class="success-icon">✅</div>
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:.5rem">¡FACTURA GENERADA!</h2>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:.5rem" id="msg-exito"></p>
+      <p style="font-size:13px;color:var(--muted)">UUID / Folio fiscal:</p>
+      <div class="success-uuid" id="uuid-display">—</div>
+      <p style="font-size:12px;color:var(--muted);margin-top:.5rem">
+        Se envió una copia al correo registrado. También puedes descargar aquí:
+      </p>
+      <div class="dl-btns">
+        <button class="btn-dl btn-pdf" onclick="descargar('pdf')" id="btn-dl-pdf">⬇ PDF</button>
+        <button class="btn-dl btn-xml" onclick="descargar('xml')" id="btn-dl-xml">⬇ XML</button>
+        <button class="btn-dl btn-nueva" onclick="reiniciar()">Facturar otro envío</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <strong>PAQUETELLEGUE</strong>
+  <p style="margin-top:.5rem">Heroico Colegio Militar #511, Loreto, Zacatecas &nbsp;·&nbsp; <a href="tel:4966880357">496 688 0357</a></p>
+  <p style="margin-top:.25rem;font-size:11px">Facturación electrónica CFDI 4.0 · Powered by factura.com</p>
+</footer>
+
+<script>
+let envioSeleccionado = null;
+let cfdiUID = null;
+
+// ── PASO 1: Buscar ────────────────────────────────────────────────
+async function buscar(){
+  const termino = document.getElementById('termino').value.trim();
+  if(!termino){ document.getElementById('hint-buscar').textContent='Ingresa un dato para buscar'; return; }
+
+  const btn = document.getElementById('btn-buscar');
+  const res = document.getElementById('resultado-buscar');
+  btn.disabled=true; btn.textContent='Buscando...';
+  res.innerHTML='<div class="loading"><div class="spinner"></div><p>Buscando tu envío...</p></div>';
+
+  try{
+    const r = await fetch('/facturacion/api/buscar',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({termino})
+    });
+    // Leer como texto primero para detectar errores HTML
+    const texto = await r.text();
+    let d;
+    try{
+      d = JSON.parse(texto);
+    } catch(parseErr){
+      // El servidor devolvió HTML en lugar de JSON — error 500
+      console.error('Respuesta no-JSON:', texto.substring(0,200));
+      res.innerHTML=`<div class="alert alert-err">⚠️ Error del servidor (${r.status}). Por favor intenta de nuevo o llámanos al <a href="tel:4966880357" style="color:var(--gold)">496 688 0357</a></div>`;
+      return;
+    }
+    if(!d.ok){
+      res.innerHTML=`<div class="alert alert-err">⚠️ ${d.error}</div>`;
+      return;
+    }
+    mostrarEnvios(d.envios);
+  }catch(e){
+    console.error('Error fetch:', e);
+    res.innerHTML=`<div class="alert alert-err">⚠️ Sin conexión. Verifica tu internet e intenta de nuevo.</div>`;
+  }finally{
+    btn.disabled=false; btn.textContent='🔍 Buscar envío';
+  }
+}
+
+function mostrarEnvios(envios){
+  const res = document.getElementById('resultado-buscar');
+  let html = `<p style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Se encontraron ${envios.length} envío(s):</p>`;
+  envios.forEach((e,i) => {
+    const fecha = new Date(e.creado_en).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+    const facturable = e.facturable;
+    html += `
+    <div class="envio-card ${facturable?'':'no-facturable'}" onclick="${facturable?`seleccionarEnvio(${i})`:''}">
+      <div class="envio-head">
+        <div>
+          <div class="envio-guia">${e.numero_guia||'—'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">${fecha}</div>
+        </div>
+        <div>
+          <div class="envio-total">$${parseFloat(e.precio_final||0).toLocaleString('es-MX',{minimumFractionDigits:2})}<small>MXN</small></div>
+          <span class="badge ${facturable?'badge-ok':'badge-no'}">${facturable?'Facturable':'Fuera de período'}</span>
+        </div>
+      </div>
+      <div class="envio-meta">
+        <div class="meta-item">Destinatario: <strong>${e.destinatario_nombre||'—'}</strong></div>
+        <div class="meta-item">Destino: <strong>${e.destinatario_ciudad||'—'}</strong></div>
+        <div class="meta-item">Carrier: <strong>${e.carrier||e.servicio||'—'}</strong></div>
+      </div>
+      ${!facturable?`<div style="font-size:11px;color:var(--red);margin-top:.5rem">⚠️ ${e.razon_no_facturable}</div>`:''}
+      ${!facturable && e.ya_facturada ? `
+      <div style="margin-top:.75rem;display:flex;gap:.75rem;flex-wrap:wrap">
+        <a href="/facturacion/api/descargar/${e.uuid_cfdi}/pdf" target="_blank"
+           style="background:#c0392b;color:#fff;font-size:12px;font-weight:700;padding:7px 14px;border-radius:6px;text-decoration:none">
+          ⬇ Descargar PDF
+        </a>
+        <a href="/facturacion/api/descargar/${e.uuid_cfdi}/xml" target="_blank"
+           style="background:#2d6a8f;color:#fff;font-size:12px;font-weight:700;padding:7px 14px;border-radius:6px;text-decoration:none">
+          ⬇ Descargar XML
+        </a>
+      </div>` : ''}
+      ${facturable?'<div style="font-size:11px;color:var(--muted);margin-top:.5rem">← Clic para seleccionar este envío</div>':''}
+    </div>`;
+  });
+  res.innerHTML=html;
+  window._envios = envios;
+}
+
+function seleccionarEnvio(idx){
+  envioSeleccionado = window._envios[idx];
+  // Marcar seleccionado
+  document.querySelectorAll('.envio-card').forEach((c,i)=>c.classList.toggle('selected',i===idx));
+  // Ir al paso 2 tras breve pausa
+  setTimeout(()=>{
+    document.getElementById('panel-fiscal').style.display='block';
+    document.getElementById('panel-fiscal').scrollIntoView({behavior:'smooth',block:'start'});
+    // Resumen
+    const e = envioSeleccionado;
+    const fecha = new Date(e.creado_en).toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+    document.getElementById('resumen-envio').innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Envío seleccionado</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--gold)">${e.numero_guia||'—'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${fecha} · ${e.carrier||e.servicio||''}</div>
+          <div style="font-size:13px;margin-top:4px">Para: <strong>${e.destinatario_nombre||'—'}</strong></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px">$${parseFloat(e.precio_final||0).toLocaleString('es-MX',{minimumFractionDigits:2})}</div>
+          <div style="font-size:11px;color:var(--muted)">MXN · incluye IVA</div>
+        </div>
+      </div>`;
+    // Actualizar steps
+    setStep(2);
+  }, 300);
+}
+
+// ── Validar RFC y filtrar regímenes ──────────────────────────────
+let rfcTimer = null;
+async function validarRFC(){
+  const rfc = document.getElementById('rfc').value.trim();
+  const hint = document.getElementById('hint-rfc');
+  const inp  = document.getElementById('rfc');
+  if(rfc.length < 12){ inp.classList.remove('valid','invalid'); hint.className='hint'; hint.textContent=''; return; }
+  clearTimeout(rfcTimer);
+  rfcTimer = setTimeout(async()=>{
+    try{
+      const r = await fetch('/facturacion/api/validar-rfc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rfc})});
+      const d = await r.json();
+      if(d.valido){
+        inp.classList.add('valid'); inp.classList.remove('invalid');
+        hint.className='hint ok'; hint.textContent=`✓ RFC válido · ${d.tipo}`;
+        // Filtrar regímenes según tipo de persona
+        _filtrarRegimenes(d.tipo);
+      } else {
+        inp.classList.add('invalid'); inp.classList.remove('valid');
+        hint.className='hint err'; hint.textContent=`✗ ${d.error}`;
+      }
+    }catch(e){}
+  }, 500);
+}
+
+// Regímenes válidos por tipo — solo para referencia visual, no filtra
+const _REGIMENES_MORAL = ['601','603','609','620','622','623','624','628','646'];
+const _REGIMENES_FISICA = ['605','606','608','610','611','612','614','615','616','621','625','626'];
+
+function _filtrarRegimenes(tipo){
+  // Solo actualiza el hint — no filtra opciones para no confundir al cliente
+  const hint = document.getElementById('hint-rfc');
+  const esMoral = tipo === 'Persona Moral';
+  const sugeridos = esMoral
+    ? 'Regímenes comunes: 601 (General PM), 603 (No lucrativos), 620 (Grupos), 626 (Simplificado)'
+    : 'Regímenes comunes: 605 (Salarios), 616 (Sin obligaciones), 621 (RIF), 626 (Simplificado)';
+  hint.className = 'hint ok';
+  hint.textContent = `✓ RFC válido · ${tipo} — ${sugeridos}`;
+}
+
+// ── PASO 2: Generar CFDI ─────────────────────────────────────────
+async function generarCFDI(){
+  const alertEl = document.getElementById('alert-fiscal');
+  const btn = document.getElementById('btn-generar');
+
+  const rfc    = document.getElementById('rfc').value.trim();
+  const razon  = document.getElementById('razon_social').value.trim();
+  const cp     = document.getElementById('cp_fiscal').value.trim();
+  const reg    = document.getElementById('regimen_fiscal').value;
+  const uso    = document.getElementById('uso_cfdi').value;
+  const forma  = document.getElementById('forma_pago')?.value || '99';
+  const email  = document.getElementById('email_factura').value.trim();
+
+  // Dirección fiscal opcional
+  const dirVisible = document.getElementById('dir-fiscal')?.style.display !== 'none';
+  const direccion = dirVisible ? {
+    calle:      document.getElementById('dir_calle')?.value.trim().toUpperCase() || '',
+    numero_ext: document.getElementById('dir_numero_ext')?.value.trim() || '',
+    numero_int: document.getElementById('dir_numero_int')?.value.trim() || '',
+    colonia:    document.getElementById('dir_colonia')?.value.trim().toUpperCase() || '',
+    municipio:  document.getElementById('dir_municipio')?.value.trim().toUpperCase() || '',
+    estado:     document.getElementById('dir_estado')?.value.trim().toUpperCase() || '',
+  } : null;
+
+  if(!rfc||!razon||!cp||!email){
+    alertEl.innerHTML='<div class="alert alert-err">⚠️ Completa todos los campos requeridos</div>';
+    return;
+  }
+
+  btn.disabled=true; btn.textContent='Generando factura...';
+  alertEl.innerHTML='<div class="loading"><div class="spinner"></div><p>Timbrado con el SAT, espera un momento...</p></div>';
+
+  try{
+    const r = await fetch('/facturacion/api/generar',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        guia_id: envioSeleccionado.id,
+        rfc, razon_social: razon, cp_fiscal: cp,
+        regimen_fiscal: reg, uso_cfdi: uso,
+        forma_pago: forma, email,
+        direccion: direccion,
+      })
+    });
+    const texto = await r.text();
+    let d;
+    try{ d = JSON.parse(texto); }
+    catch(e){
+      alertEl.innerHTML=`<div class="alert alert-err">⚠️ Error del servidor (${r.status}). Intenta de nuevo o llámanos al 496 688 0357.</div>`;
+      return;
+    }
+    if(!d.ok){
+      // Resaltar campo según el error
+      if(d.error && (d.error.includes('Código Postal') || d.error.includes('DomicilioFiscal'))){
+        document.getElementById('cp_fiscal').classList.add('invalid');
+        document.getElementById('cp_fiscal').focus();
+        alertEl.innerHTML=`<div class="alert alert-err">⚠️ ${d.error}</div>`;
+      } else if(d.error && (d.error.includes('CFDI40158') || d.error.includes('RegimenFiscal') || d.error.includes('régimen') || d.error.includes('Régimen'))){
+        const regSel = document.getElementById('regimen_fiscal');
+        if(regSel){ regSel.style.borderColor='var(--red)'; regSel.focus(); }
+        alertEl.innerHTML=`<div class="alert alert-err">
+          ⚠️ ${d.error}
+          <br><br>
+          <a href="https://www.sat.gob.mx/aplicacion/login/43824/genera-tu-constancia-de-situacion-fiscal"
+             target="_blank" style="color:var(--gold);font-weight:600;text-decoration:none">
+            📄 Obtener Constancia de Situación Fiscal →
+          </a>
+        </div>`;
+      } else {
+        alertEl.innerHTML=`<div class="alert alert-err">⚠️ ${d.error}</div>`;
+      }
+      return;
+    }
+    // ÉXITO
+    cfdiUID = d.uid;
+    alertEl.innerHTML='';
+    document.getElementById('panel-fiscal').style.display='none';
+    const panel = document.getElementById('panel-exito');
+    panel.style.display='block';
+    document.getElementById('uuid-display').textContent = d.uuid || '—';
+    document.getElementById('msg-exito').textContent = d.mensaje || 'Factura generada correctamente.';
+    setStep(3);
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){
+    alertEl.innerHTML='<div class="alert alert-err">⚠️ Error de conexión. Intenta de nuevo.</div>';
+  }finally{
+    btn.disabled=false; btn.textContent='🧾 Generar Factura';
+  }
+}
+
+// ── Descargar ─────────────────────────────────────────────────────
+function descargar(tipo){
+  if(!cfdiUID){ alert('No hay factura disponible'); return; }
+  window.open(`/facturacion/api/descargar/${cfdiUID}/${tipo}`, '_blank');
+}
+
+// ── Nav ───────────────────────────────────────────────────────────
+function volverBuscar(){
+  document.getElementById('panel-fiscal').style.display='none';
+  envioSeleccionado=null;
+  setStep(1);
+}
+
+function reiniciar(){
+  envioSeleccionado=null; cfdiUID=null;
+  document.getElementById('termino').value='';
+  document.getElementById('resultado-buscar').innerHTML='';
+  document.getElementById('panel-fiscal').style.display='none';
+  document.getElementById('panel-exito').style.display='none';
+  document.getElementById('panel-buscar').scrollIntoView({behavior:'smooth'});
+  setStep(1);
+  // Limpiar campos fiscales
+  ['rfc','razon_social','cp_fiscal','email_factura'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.value='';el.classList.remove('valid','invalid');}
+  });
+}
+
+function setStep(n){
+  for(let i=1;i<=3;i++){
+    const el=document.getElementById(`step${i}`);
+    el.classList.remove('active','done');
+    if(i<n) el.classList.add('done');
+    else if(i===n) el.classList.add('active');
+  }
+}
+
+function toggleDireccion(){
+  const div = document.getElementById('dir-fiscal');
+  const btn = document.getElementById('btn-dir');
+  const visible = div.style.display !== 'none';
+  div.style.display = visible ? 'none' : 'block';
+  btn.textContent = visible ? '➕ Agregar dirección fiscal (opcional)' : '✖ Quitar dirección fiscal';
+  btn.style.borderColor = visible ? 'var(--border)' : 'var(--gold)';
+  btn.style.color = visible ? 'var(--muted)' : 'var(--gold)';
+}
+
+// Enter en búsqueda
+document.getElementById('termino').addEventListener('keydown', e=>{if(e.key==='Enter') buscar();});
+
+// ── Precargar desde QR (?guia=XXXXXX) ────────────────────────────
+window.addEventListener('load', function(){
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const guia = params.get('guia');
+    if(!guia) return;
+    const inp = document.getElementById('termino');
+    if(!inp) return;
+    inp.value = guia.trim();
+    // Esperar un momento para que el JS esté listo y buscar
+    setTimeout(function(){
+      try { buscar(); } catch(e){ console.warn('Precarga QR:', e); }
+    }, 800);
+  } catch(e){ console.warn('Error precarga:', e); }
+});
+</script>
+</body>
+</html>

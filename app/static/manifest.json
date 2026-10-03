@@ -1,0 +1,24 @@
+{
+  "name": "PAQUETELLEGUE",
+  "short_name": "Paquetell",
+  "description": "Sistema de venta de guías de envío",
+  "start_url": "/nueva",
+  "display": "standalone",
+  "background_color": "#0D0D0D",
+  "theme_color": "#C9A84C",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/img/logo_navbar.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/img/logo_navbar.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["business", "utilities"],
+  "lang": "es-MX"
+}

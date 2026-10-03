@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if sucursal else 'Nueva' }} Sucursal - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header" style="margin-bottom:24px">
+  <h1 style="color:var(--accent)">🏪 {{ 'Editar' if sucursal else 'Nueva' }} Sucursal</h1>
+</div>
+
+<div class="card" style="max-width:600px">
+  <form method="POST">
+    <div class="form-group">
+      <label class="form-label">Nombre *</label>
+      <input type="text" name="nombre" class="form-input" required value="{{ sucursal.nombre if sucursal else '' }}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Dirección</label>
+      <input type="text" name="direccion" class="form-input" value="{{ sucursal.direccion if sucursal else '' }}">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="form-group">
+        <label class="form-label">Ciudad</label>
+        <input type="text" name="ciudad" class="form-input" value="{{ sucursal.ciudad if sucursal else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado</label>
+        <input type="text" name="estado" class="form-input" value="{{ sucursal.estado if sucursal else '' }}">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="form-group">
+        <label class="form-label">CP</label>
+        <input type="text" name="cp" class="form-input" value="{{ sucursal.cp if sucursal else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Teléfono</label>
+        <input type="text" name="telefono" class="form-input" value="{{ sucursal.telefono if sucursal else '' }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" name="email" class="form-input" value="{{ sucursal.email if sucursal else '' }}">
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:10px">
+      <input type="checkbox" name="activa" id="activa" value="1" {{ 'checked' if not sucursal or sucursal.activa }}>
+      <label for="activa">Sucursal activa</label>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:8px">
+      <button type="submit" class="btn btn-primary">Guardar</button>
+      <a href="{{ url_for('admin.sucursales') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

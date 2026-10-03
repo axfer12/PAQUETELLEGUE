@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Configuracion - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">⚙️ Configuracion</h2>
+  <a href="{{ url_for('admin.index') }}" class="btn btn-secondary">← Admin</a>
+</div>
+<form method="POST" style="max-width:700px">
+  <div class="card">
+    <div class="card-title">Datos de la Empresa</div>
+    <div class="form-grid">
+      <div class="form-group span-2"><label>Nombre</label>
+        <input name="empresa_nombre" class="form-input" value="{{ config.get('empresa_nombre','') }}" required/>
+      </div>
+      <div class="form-group"><label>RFC</label>
+        <input name="empresa_rfc" class="form-input" value="{{ config.get('empresa_rfc','') }}"/>
+      </div>
+      <div class="form-group"><label>Telefono</label>
+        <input name="empresa_telefono" class="form-input" value="{{ config.get('empresa_telefono','') }}"/>
+      </div>
+      <div class="form-group"><label>Email</label>
+        <input name="empresa_email" type="email" class="form-input" value="{{ config.get('empresa_email','') }}"/>
+      </div>
+      <div class="form-group"><label>C.P.</label>
+        <input name="empresa_cp" class="form-input" value="{{ config.get('empresa_cp','') }}"/>
+      </div>
+      <div class="form-group span-2"><label>Direccion</label>
+        <input name="empresa_direccion" class="form-input" value="{{ config.get('empresa_direccion','') }}"/>
+      </div>
+      <div class="form-group"><label>Ciudad</label>
+        <input name="empresa_ciudad" class="form-input" value="{{ config.get('empresa_ciudad','') }}"/>
+      </div>
+      <div class="form-group"><label>Estado</label>
+        <input name="empresa_estado" class="form-input" value="{{ config.get('empresa_estado','') }}"/>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Precios y Facturacion</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>IVA (%)</label>
+        <input name="iva" type="number" step="0.01" class="form-input" value="{{ config.get('iva','16') }}"/>
+        <small style="color:var(--text-sub)">0 = sin IVA en recibo</small>
+      </div>
+      <div class="form-group">
+        <label>Ganancia Envíos Nacionales (%)</label>
+        <input id="markup_nacional" name="markup_nacional" type="number" step="0.5" min="0" max="999"
+               class="form-input" value="30" placeholder="30"/>
+        <small style="color:var(--text-sub)">% sobre costo proveedor — Skydropx (MX→MX)</small>
+      </div>
+      <div class="form-group">
+        <label>Ganancia Envíos Internacionales (%)</label>
+        <input id="markup_internacional" name="markup_internacional" type="number" step="0.5" min="0" max="999"
+               class="form-input" value="40" placeholder="40"/>
+        <small style="color:var(--text-sub)">% sobre costo proveedor — Envíos Internacionales (MX→USA/etc)</small>
+      </div>
+      <script>
+      (function(){
+        var raw = {{ config.get('markup_json','30') | tojson }};
+        var nac = 30, intl = 40;
+        if(typeof raw === 'number'){ nac = raw; intl = raw; }
+        else if(typeof raw === 'string'){
+          try{ var o=JSON.parse(raw); nac=o.nacional||30; intl=o.internacional||40; }
+          catch(e){ nac=parseFloat(raw)||30; intl=nac; }
+        }
+        document.getElementById('markup_nacional').value = nac;
+        document.getElementById('markup_internacional').value = intl;
+      })();
+      </script>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Mensaje en Recibo</div>
+    <div class="form-group">
+      <input name="mensaje_recibo" class="form-input" value="{{ config.get('mensaje_recibo','Gracias por su preferencia') }}" placeholder="Gracias por su preferencia"/>
+    </div>
+    <div class="form-group span-2">
+      <label>🔍 URL de rastreo (Skydropx tracking page)</label>
+      <input name="tracking_url" class="form-input"
+             value="{{ config.get('tracking_url','https://tracking.skydropx.com/es-MX/page/') }}"
+             placeholder="https://tracking.skydropx.com/es-MX/page/TUNOMBRE"/>
+      <small style="color:var(--text-sub);font-size:11px">Aparece como QR en el recibo para que el cliente rastree su envío</small>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary btn-lg">Guardar Configuracion</button>
+</form>
+{% endblock %}
