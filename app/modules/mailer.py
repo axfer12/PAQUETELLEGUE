@@ -21,29 +21,48 @@ APP_URL         = os.environ.get("APP_URL", "https://paquetellegue.shop").rstrip
 
 
 def _send(to: str, subject: str, html: str):
-    """Envía un correo HTML vía API de Resend. Lanza excepción si falla."""
-    payload = json.dumps({
+    """Envía un correo HTML vía API de Resend usando requests si está disponible."""
+    payload = {
         "from":    f"{MAIL_FROM} <{MAIL_FROM_EMAIL}>",
         "to":      [to],
         "subject": subject,
         "html":    html,
-    }).encode("utf-8")
+    }
+    headers = {
+        "Authorization": f"Bearer {RESEND_API_KEY}",
+        "Content-Type":  "application/json",
+    }
 
+    # Intentar con requests (maneja mejor proxies y TLS)
+    try:
+        import requests as _req
+        r = _req.post("https://api.resend.com/emails",
+                      json=payload, headers=headers, timeout=15)
+        print(f"[MAIL] Resend status={r.status_code} body={r.text[:200]}")
+        if not r.ok:
+            raise Exception(f"Resend error {r.status_code}: {r.text}")
+        return r.json()
+    except ImportError:
+        pass
+
+    # Fallback: urllib
+    body_bytes = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         "https://api.resend.com/emails",
-        data    = payload,
-        headers = {
-            "Authorization": f"Bearer {RESEND_API_KEY}",
-            "Content-Type":  "application/json",
-        },
-        method = "POST",
+        data=body_bytes, headers=headers, method="POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
-            return json.loads(r.read())
+            resp_body = r.read()
+            print(f"[MAIL OK] Resend: {resp_body.decode('utf-8', errors='replace')[:200]}")
+            return json.loads(resp_body)
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
+        print(f"[MAIL ERROR] code={e.code} body={body}")
         raise Exception(f"Resend error {e.code}: {body}")
+    except Exception as e:
+        print(f"[MAIL ERROR] {type(e).__name__}: {e}")
+        raise
 
 
 def enviar_reset_password(to: str, nombre: str, token: str):
