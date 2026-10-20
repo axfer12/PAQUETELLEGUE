@@ -55,6 +55,9 @@ CLIENT_SEC = "-Fq2tF48UNrhsGAN6oB9rkoywkw2x2cWXq9KuSu_lnY"
 EI_API_BASE   = "https://app.enviosinternacionales.com/api/v1"
 EI_CLIENT_ID  = "gtXpeDxcoHGCsbSJXBpa_6ygxbw4usoesc868XEAZ2I"
 EI_CLIENT_SEC = "MvcA6bSwXRPT03Jh4QO5u0rs_id-qtbfxJERWGnXB8E"
+# Proxy HostGator — ya no se usa, variables mantenidas por compatibilidad con admin.py
+EI_PROXY_URL  = os.environ.get("EI_PROXY_URL", "")
+EI_PROXY_KEY  = os.environ.get("EI_PROXY_KEY", "")
 _ei_token_cache: dict = {}
 _ei_token_lock  = threading.Lock()
 
@@ -127,6 +130,32 @@ HS_DEFAULT_BY_COUNTRY: dict[str, str] = {
     "ES":"4901.100000","FR":"4901.100000","GB":"4901.100000","US":"4901.100020",
 }
 HS_DEFAULT = "4901.100020"
+
+# ── HS Codes EXCLUSIVOS para Skydropx (dfcd8021-HS_Codes-v2_1.xlsx) ──────────
+# Separados de HS_CODES_BY_COUNTRY (que usa EI) para no generar conflictos.
+# Skydropx no acepta 9999.x — fallback siempre a 4901 (libros/impresos).
+HS_CODES_SKY: dict[str, dict[str, str]] = {
+    "documentos":   {"US":"4906.000000","CA":"4906.000000","GB":"4906.000000","FR":"4906.000000","ES":"4906.000000","CO":"4906.000000","CN":"4906.000010999","DE":"4906.00","AU":"4906.00","JP":"4906.00","IT":"4906.00","BR":"4906.00","AR":"4906.00","CL":"4906.00","PE":"4906.00","AE":"4906.00","CH":"4906.00","GLOBAL":"4906.00"},
+    "ropa":         {"US":"6109.100004","CA":"6109.100011","GB":"6109.100010","FR":"6109.100010","ES":"6109.100010","CO":"6109.100000","CN":"6109.100000301","DE":"6109.10","AU":"6109.10","JP":"6109.10","IT":"6109.10","BR":"6109.10","AR":"6109.10","CL":"6109.10","PE":"6109.10","AE":"6109.10","CH":"6109.10","GLOBAL":"6109.10"},
+    "zapatos":      {"US":"6404.112030","CA":"6404.111100","GB":"6404.110000","FR":"6404.110000","ES":"6404.110000","CO":"6404.111000","CN":"6404.110000999","DE":"6404.11","AU":"6404.11","JP":"6404.11","IT":"6404.11","BR":"6404.11","AR":"6404.11","CL":"6404.11","PE":"6404.11","AE":"6404.11","CH":"6404.11","GLOBAL":"6404.01"},
+    "celular":      {"US":"8517.110000","CA":"8517.110010","GB":"8517.110000","FR":"8517.110000","ES":"8517.110000","CO":"8517.110000","CN":"8517.110010999","DE":"8517.11","AU":"8517.11","JP":"8517.11","IT":"8517.11","BR":"8517.11","AR":"8517.11","CL":"8517.11","PE":"8517.11","AE":"8517.11","CH":"8517.11","GLOBAL":"8517.11"},
+    "electronica":  {"US":"8471.300100","CA":"8471.300000","GB":"8471.300000","FR":"8471.300000","ES":"8471.300000","CO":"8471.300000","CN":"8471.900000","DE":"8471.30","AU":"8471.30","JP":"8471.30","IT":"8471.30","BR":"8471.30","AR":"8471.30","CL":"8471.30","PE":"8471.30","AE":"8471.30","CH":"8471.30","GLOBAL":"8471.04"},
+    "cosmeticos":   {"US":"3304.100000","CA":"3304.100000","GB":"3304.100000","FR":"3304.100000","ES":"3304.100000","CO":"3304.100000","CN":"3304.100011101","DE":"3304.10","AU":"3304.10","JP":"3304.10","IT":"3304.10","BR":"3304.10","AR":"3304.10","CL":"3304.10","PE":"3304.10","AE":"3304.10","CH":"3304.10","GLOBAL":"3304.09"},
+    "joyeria":      {"US":"7113.111000","CA":"7113.111010","GB":"7113.110000","FR":"7113.110000","ES":"7113.110000","CO":"7113.110000","CN":"7113.111000999","DE":"7113.11","AU":"7113.11","JP":"7113.11","IT":"7113.11","BR":"7113.11","AR":"7113.11","CL":"7113.11","PE":"7113.11","AE":"7113.11","CH":"7113.11","GLOBAL":"7113.01"},
+    "juguetes":     {"US":"9503.000011","CA":"9503.001010","GB":"9503.001000","FR":"9503.001000","ES":"9503.001000","CO":"9503.001000","CN":"9503.001000101","DE":"9503.00","AU":"9503.00","JP":"9503.00","IT":"9503.00","BR":"9503.00","AR":"9503.00","CL":"9503.00","PE":"9503.00","AE":"9503.00","CH":"9503.00","GLOBAL":"9503.00"},
+    "herramientas": {"US":"8201.100000","CA":"8201.101000","GB":"8201.100000","FR":"8201.100000","ES":"8201.100000","CO":"8201.100000","CN":"8201.100010101","DE":"8201.10","AU":"8201.10","JP":"8201.10","IT":"8201.10","BR":"8201.10","AR":"8201.10","CL":"8201.10","PE":"8201.10","AE":"8201.10","CH":"8201.10","GLOBAL":"8201.10"},
+    "libros":       {"US":"4901.100020","CA":"4901.100000","GB":"4901.100000","FR":"4901.100000","ES":"4901.100000","CO":"4901.101000","CN":"4901.100000999","DE":"4901.10","AU":"4901.10","JP":"4901.10","IT":"4901.10","BR":"4901.10","AR":"4901.10","CL":"4901.10","PE":"4901.10","AE":"4901.10","CH":"4901.10","GLOBAL":"4901.09"},
+    "alimentos":    {"US":"2106.100000","CA":"2106.100000","GB":"2106.102020","FR":"2106.102020","ES":"2106.102020","CO":"2106.101100","CN":"2106.100000101","GLOBAL":"2106.10"},
+    "medicamentos": {"US":"3004.101010","CA":"3004.100010","GB":"3004.100000","FR":"3004.100000","ES":"3004.100000","CO":"3004.101000","CN":"3004.905590","DE":"3004.10","AU":"3004.10","JP":"3004.10","IT":"3004.10","BR":"3004.10","AR":"3004.10","CL":"3004.10","PE":"3004.10","AE":"3004.10","CH":"3004.10","GLOBAL":"3004.03"},
+}
+# Fallback por país para Skydropx — 4901 existe en todos (9999.x no está en su catálogo)
+HS_DEFAULT_BY_COUNTRY_SKY: dict[str, str] = {
+    "US":"4901.100020","CA":"4901.100000","GB":"4901.100000","FR":"4901.100000",
+    "ES":"4901.100000","CO":"4901.101000","CN":"4901.100000999","DE":"4901.10",
+    "AU":"4901.10","JP":"4901.10","IT":"4901.10","BR":"4901.10","AR":"4901.10",
+    "CL":"4901.10","PE":"4901.10","AE":"4901.10","CH":"4901.10","GLOBAL":"4901.09",
+}
+HS_DEFAULT_SKY = "4901.100020"
 
 # Mantener compat con código existente
 HS_CODES: dict[str, str] = {k: v.get("US", HS_DEFAULT) for k, v in HS_CODES_BY_COUNTRY.items()}
@@ -231,7 +260,7 @@ def get_ei_token() -> str:
         if _ei_token_cache.get("token") and now < _ei_token_cache.get("exp", 0) - 60:
             return _ei_token_cache["token"]
         body = {"grant_type":"client_credentials","client_id":EI_CLIENT_ID,"client_secret":EI_CLIENT_SEC}
-        via = f"proxy({EI_PROXY_URL[:40]}...)" if EI_PROXY_URL else "directo"
+        via = "directo"
         _log(f"EI: solicitando token via {via} (client_id={EI_CLIENT_ID[:8]}...)")
         try:
             r = _ei_http("POST", "/oauth/token", data=body,
@@ -532,12 +561,26 @@ def cotizar_envio(
         }]
         _log(f"EI INT {pais_origen}→{pais_destino} hs={hs} price_MXN={precio_ei_cotiz}")
 
-        # Payload Skydropx (sin products — no lo soporta)
+        # Payload Skydropx internacional
+        # Skydropx PRO requiere products a nivel de quotation (no solo dentro del parcel)
+        # HS code para Skydropx — diccionario SEPARADO de EI (HS_CODES_SKY vs HS_CODES_BY_COUNTRY)
+        # Skydropx no acepta 9999.x — fallback siempre a 4901 (HS_DEFAULT_SKY)
+        if _cat_key2 in HS_CODES_SKY:
+            hs_sky = (hs_code or "").strip() or HS_CODES_SKY[_cat_key2].get(_pais_d2, HS_CODES_SKY[_cat_key2].get("GLOBAL", HS_DEFAULT_SKY))
+        else:
+            hs_sky = (hs_code or "").strip() or HS_DEFAULT_BY_COUNTRY_SKY.get(_pais_d2, HS_DEFAULT_SKY)
+        _log(f"SKY INT hs_sky={hs_sky} (EI hs={hs})")
+        _sky_price = round(max(precio_ei_cotiz, 1.0), 2)  # mínimo 1 USD para evitar 422
+        _sky_product = {"hs_code": hs_sky or HS_DEFAULT_SKY, "description_en": en or f"General merchandise: {contenido}",
+                        "country_code": pais_origen, "quantity": 1,
+                        "price": _sky_price}
         payload_sky = {"quotation": {
             "address_from": payload["quotation"]["address_from"],
             "address_to":   payload["quotation"]["address_to"],
             "parcels": [{"length": int(largo), "width": int(ancho),
-                         "height": int(alto), "weight": float(peso)}],
+                         "height": int(alto), "weight": float(peso),
+                         "products": [_sky_product]}],
+            "products": [_sky_product],
         }}
 
         rates_ei  = []
