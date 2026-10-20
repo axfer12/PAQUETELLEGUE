@@ -42,11 +42,13 @@ def forgot_password():
             return render_template("auth/forgot_password.html")
 
         usuario = db.get_usuario_por_email(email)
+        print(f"[FORGOT] email={email!r} usuario_encontrado={bool(usuario)} mailer_ok={mailer.esta_configurado()}")
         # Siempre mostramos el mismo mensaje (seguridad — no revelar si el email existe)
         if usuario and mailer.esta_configurado():
             try:
                 token = db.crear_reset_token(usuario["id"])
                 mailer.enviar_reset_password(email, usuario["nombre"], token)
+                print(f"[FORGOT] envío solicitado para {email!r}")
             except Exception as e:
                 # Log del error pero no lo mostramos al usuario
                 print(f"[MAIL ERROR] {e}")
