@@ -14,7 +14,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 MAIL_SERVER   = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
-MAIL_PORT     = int(os.environ.get("MAIL_PORT", "587"))
+MAIL_PORT     = int(os.environ.get("MAIL_PORT", "465"))
 MAIL_USER     = os.environ.get("MAIL_USER", "")
 MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "")
 MAIL_FROM     = os.environ.get("MAIL_FROM", "PAQUETELLEGUE")
@@ -22,16 +22,16 @@ APP_URL       = os.environ.get("APP_URL", "https://paquetellegue.shop").rstrip("
 
 
 def _send(to: str, subject: str, html: str):
-    """Envía un correo HTML. Lanza excepción si falla."""
+    """Envía un correo HTML usando SSL (puerto 465). Lanza excepción si falla."""
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = f"{MAIL_FROM} <{MAIL_USER}>"
     msg["To"]      = to
     msg.attach(MIMEText(html, "html", "utf-8"))
 
-    with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as srv:
-        srv.ehlo()
-        srv.starttls()
+    # Puerto 465 = SSL directo (SMTP_SSL), no STARTTLS
+    # Render bloquea el puerto 587; el 465 sí pasa su firewall
+    with smtplib.SMTP_SSL(MAIL_SERVER, MAIL_PORT) as srv:
         srv.login(MAIL_USER, MAIL_PASSWORD)
         srv.sendmail(MAIL_USER, to, msg.as_string())
 
