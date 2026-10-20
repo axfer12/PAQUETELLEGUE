@@ -1216,3 +1216,38 @@ document.addEventListener('DOMContentLoaded', () => {
 // Limpiar borrador cuando se genera la guía exitosamente
 const _origMostrarResultado = typeof _mostrarResultado !== 'undefined' ? _mostrarResultado : null;
 document.addEventListener('guia-generada', () => _limpiarBorrador());
+
+// ── Calculadora Peso Volumétrico ──────────────────────────────────────────────
+(function(){
+  function _calcVol(){
+    const alto  = parseFloat(document.getElementById("alto")?.value)  || 0;
+    const ancho = parseFloat(document.getElementById("ancho")?.value) || 0;
+    const largo = parseFloat(document.getElementById("largo")?.value) || 0;
+    const peso  = parseFloat(document.getElementById("peso")?.value)  || 0;
+    const elFormula = document.getElementById("vol-formula");
+    const elCobrar  = document.getElementById("vol-cobrar");
+    if(!elFormula || !elCobrar) return;
+    if(alto <= 0 || ancho <= 0 || largo <= 0){
+      elFormula.textContent = "—";
+      elCobrar.textContent  = "—";
+      return;
+    }
+    const vol = parseFloat(((alto * ancho * largo) / 5000).toFixed(2));
+    const cobrar = Math.max(peso, vol);
+    elFormula.textContent = `(${alto}×${ancho}×${largo}) ÷ 5000 = ${vol} kg`;
+    elCobrar.textContent  = `${cobrar.toFixed(2)} kg`;
+    // Resaltar si el volumétrico es mayor que el real
+    elCobrar.style.color = vol > peso ? "#ff9944" : "#C9A84C";
+    if(vol > peso){
+      elCobrar.title = "El peso volumétrico es mayor — las paqueterías cobrarán por este peso";
+    } else {
+      elCobrar.title = "Se cobra el peso real";
+    }
+  }
+  document.addEventListener("DOMContentLoaded", function(){
+    ["alto","ancho","largo","peso"].forEach(id => {
+      document.getElementById(id)?.addEventListener("input", _calcVol);
+    });
+    _calcVol(); // Calcular con valores iniciales
+  });
+})();
