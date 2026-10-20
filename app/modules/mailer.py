@@ -1,39 +1,49 @@
 """
-Módulo de envío de correos — SMTP (Gmail por defecto).
+Módulo de envío de correos — API Resend (https://resend.com).
+Render bloquea SMTP (puertos 465 y 587), por eso se usa HTTP.
+
 Variables de entorno necesarias:
-  MAIL_SERVER   (default: smtp.gmail.com)
-  MAIL_PORT     (default: 587)
-  MAIL_USER     correo remitente
-  MAIL_PASSWORD contraseña de aplicación (App Password de Gmail)
-  MAIL_FROM     nombre que aparece como remitente (default: PAQUETELLEGUE)
-  APP_URL       URL base del sistema, ej: https://paquetellegue.shop
+  RESEND_API_KEY  API key de Resend (empieza con re_...)
+  MAIL_FROM_EMAIL correo remitente verificado en Resend (ej: noreply@paquetellegue.shop)
+                  o usa el dominio sandbox: onboarding@resend.dev (solo envía a tu propio email)
+  MAIL_FROM       nombre que aparece (default: PAQUETELLEGUE)
+  APP_URL         URL base del sistema, ej: https://paquetellegue.shop
 """
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import json
+import urllib.request
+import urllib.error
 
-MAIL_SERVER   = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
-MAIL_PORT     = int(os.environ.get("MAIL_PORT", "465"))
-MAIL_USER     = os.environ.get("MAIL_USER", "")
-MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "")
-MAIL_FROM     = os.environ.get("MAIL_FROM", "PAQUETELLEGUE")
-APP_URL       = os.environ.get("APP_URL", "https://paquetellegue.shop").rstrip("/")
+RESEND_API_KEY  = os.environ.get("RESEND_API_KEY", "")
+MAIL_FROM_EMAIL = os.environ.get("MAIL_FROM_EMAIL", "onboarding@resend.dev")
+MAIL_FROM       = os.environ.get("MAIL_FROM", "PAQUETELLEGUE")
+APP_URL         = os.environ.get("APP_URL", "https://paquetellegue.shop").rstrip("/")
 
 
 def _send(to: str, subject: str, html: str):
-    """Envía un correo HTML usando SSL (puerto 465). Lanza excepción si falla."""
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"]    = f"{MAIL_FROM} <{MAIL_USER}>"
-    msg["To"]      = to
-    msg.attach(MIMEText(html, "html", "utf-8"))
+    """Envía un correo HTML vía API de Resend. Lanza excepción si falla."""
+    payload = json.dumps({
+        "from":    f"{MAIL_FROM} <{MAIL_FROM_EMAIL}>",
+        "to":      [to],
+        "subject": subject,
+        "html":    html,
+    }).encode("utf-8")
 
-    # Puerto 465 = SSL directo (SMTP_SSL), no STARTTLS
-    # Render bloquea el puerto 587; el 465 sí pasa su firewall
-    with smtplib.SMTP_SSL(MAIL_SERVER, MAIL_PORT) as srv:
-        srv.login(MAIL_USER, MAIL_PASSWORD)
-        srv.sendmail(MAIL_USER, to, msg.as_string())
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data    = payload,
+        headers = {
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type":  "application/json",
+        },
+        method = "POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        raise Exception(f"Resend error {e.code}: {body}")
 
 
 def enviar_reset_password(to: str, nombre: str, token: str):
@@ -91,5 +101,5 @@ def enviar_reset_password(to: str, nombre: str, token: str):
 
 
 def esta_configurado() -> bool:
-    """Devuelve True si las variables de correo están configuradas."""
-    return bool(MAIL_USER and MAIL_PASSWORD)
+    """Devuelve True si la API key de Resend está configurada."""
+    return bool(RESEND_API_KEY)
