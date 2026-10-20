@@ -1054,6 +1054,8 @@ def crear_guia(
             "printing_format":       "standard",
             "consignment_note":      _cn_code,
             "package_type":          consignment_note_packaging_code,
+            "declared_value":        float(_valor_mxn_para_ei),
+            "currency":              "USD",
             "address_from": {
                 "name":         str(nombre_origen),
                 "street1":      str(calle_origen)[:45],
