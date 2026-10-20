@@ -1,0 +1,7 @@
+[20:22:09][SKY] EI rates brutos: 3 | providers: ['dhl', 'fedex', 'ups']
+[20:22:09][SKY] EI rate OK: DHL/International Worldwide $1163.18 pf=letter success=True
+[20:22:09][SKY] EI rate EXCLUIDO (fedex sin acuerdo): fedex
+[20:22:09][SKY] EI rate EXCLUIDO (success=false sin precio): ups
+[20:22:09][SKY] EI rates finales: 1
+[20:22:21][SKY] PARSEAR 3 rates raw (int=False): [{"id": "r1", "rate_type": "default", "provider_name": "estafeta", "provider_display_name": "Estafeta", "provider_service_name": "Terrestre", "status": "price_found_internal", "currency_code": "MXN", "amount": "105", "total": "130.5", "days": 3, "import_duty_amount": "0.0", "success": true}, {"id": "r2", "rate_type": "default", "provider_name": "fedex", "provider_display_name": "FedEx", "provider_service_name": "Express", "status": "price_found_internal", "currency_code": "MXN", "amount": "250", "total": "295.0", "days": 1, "import_duty_amount": "0.0", "success": true}, {"id": "r3", "rate_type": "default", "provider_name": "dhl", "provider_display_name": "DHL", "provider_service_name": "Express", "status": "no_coverage", "currency_code": "MXN", "amount": null, "total": null, "days": 0, "import_duty_amount": "0.0", "success": false}]
+[20:59:45][SKY] EI: usando cloudscraper para bypass Cloudflare

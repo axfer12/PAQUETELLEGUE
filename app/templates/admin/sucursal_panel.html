@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+{% block title %}Panel {{ sucursal.nombre }} - PAQUETELLEGUE{% endblock %}
+{% block content %}
+
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+  <div>
+    <a href="{{ url_for('admin.sucursales') }}" style="color:var(--text-sub);text-decoration:none;font-size:13px">← Sucursales</a>
+    <h1 style="margin:4px 0 0;color:var(--accent)">🏪 {{ sucursal.nombre }}</h1>
+    <span style="font-size:12px;color:var(--text-sub)">{{ sucursal.ciudad }}{% if sucursal.estado %}, {{ sucursal.estado }}{% endif %} &nbsp;·&nbsp;
+      <span class="badge {{ 'badge-success' if sucursal.activa else 'badge-danger' }}">{{ 'Activa' if sucursal.activa else 'Inactiva' }}</span>
+    </span>
+  </div>
+  <a href="{{ url_for('admin.editar_sucursal', sid=sucursal.id) }}" class="btn btn-secondary" style="font-size:13px">✏️ Editar datos</a>
+</div>
+
+{# ── Tabs ── #}
+<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:20px;border-bottom:2px solid var(--border);padding-bottom:0">
+  {% set tabs = [
+    ('config',      '⚙️ Config'),
+    ('usuarios',    '👥 Usuarios'),
+    ('promociones', '🎟️ Promociones'),
+    ('insumos',     '📦 Insumos'),
+    ('impresoras',  '🖨️ Impresoras'),
+    ('clientes',    '🧾 Clientes'),
+    ('historial',   '📋 Historial'),
+    ('totales',     '📊 Totales'),
+  ] %}
+  {% for tid, tlabel in tabs %}
+  <button onclick="showTab('{{ tid }}')" id="tab-btn-{{ tid }}"
+    class="tab-btn"
+    style="padding:8px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-sub);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s">
+    {{ tlabel }}
+  </button>
+  {% endfor %}
+</div>
+
+{# ══════════════════════════════════════════════════
+   TAB: CONFIG
+══════════════════════════════════════════════════ #}
+<div id="panel-config" class="tab-panel">
+  <div class="card" style="max-width:640px">
+    <h3 style="margin:0 0 16px;font-size:15px;color:var(--accent)">Configuración de la sucursal</h3>
+    <p style="color:var(--text-sub);font-size:12px;margin:0 0 16px">Estos valores sobreescriben la configuración global solo para esta sucursal.</p>
+    <form method="POST" action="{{ url_for('admin.panel_sucursal_config', sid=sucursal.id) }}">
+      <div class="form-group">
+        <label class="form-label">Nombre empresa (recibo)</label>
+        <input type="text" name="empresa_nombre" class="form-input" value="{{ config.empresa_nombre or '' }}" placeholder="Igual que global si se deja vacío">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label class="form-label">Teléfono</label>
+          <input type="text" name="empresa_telefono" class="form-input" value="{{ config.empresa_telefono or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" name="empresa_email" class="form-input" value="{{ config.empresa_email or '' }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Dirección</label>
+        <input type="text" name="empresa_direccion" class="form-input" value="{{ config.empresa_direccion or '' }}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label class="form-label">Colonia</label>
+          <input type="text" name="empresa_colonia" class="form-input" value="{{ config.empresa_colonia or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ciudad</label>
+          <input type="text" name="empresa_ciudad" class="form-input" value="{{ config.empresa_ciudad or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado</label>
+          <input type="text" name="empresa_estado" class="form-input" value="{{ config.empresa_estado or '' }}">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label class="form-label">CP</label>
+          <input type="text" name="empresa_cp" class="form-input" value="{{ config.empresa_cp or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">RFC</label>
+          <input type="text" name="empresa_rfc" class="form-input" value="{{ config.empresa_rfc or '' }}">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label class="form-label">Markup nacional (%)</label>
+          <input type="number" name="markup_nacional" class="form-input" step="0.1" min="0"
+            value="{{ markup_nac }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Markup internacional (%)</label>
+          <input type="number" name="markup_internacional" class="form-input" step="0.1" min="0"
+            value="{{ markup_int }}">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Guardar configuración</button>
+    </form>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════
+   TAB: USUARIOS
+══════════════════════════════════════════════════ #}
+<div id="panel-usuarios" class="tab-panel" style="display:none">
+  <div class="card" style="margin-bottom:20px">
+    <h3 style="margin:0 0 16px;font-size:15px;color:var(--accent)">Usuarios de esta sucursal</h3>
+    <table class="table">
+      <thead>
+        <tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr>
+          <td>{{ u.nombre }}</td>
+          <td style="color:var(--text-sub);font-size:13px">{{ u.usuario }}</td>
+          <td><span class="badge badge-success" style="font-size:11px">{{ u.rol }}</span></td>
+          <td><span class="badge {{ 'badge-success' if u.activo else 'badge-danger' }}" style="font-size:11px">{{ 'Activo' if u.activo else 'Inactivo' }}</span></td>
+          <td>
+            <form method="POST" action="{{ url_for('admin.panel_toggle_usuario', sid=sucursal.id, uid=u.id) }}" style="display:inline">
+              <button class="btn btn-sm btn-secondary" type="submit">{{ 'Desactivar' if u.activo else 'Activar' }}</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align:center;color:var(--text-sub)">Sin usuarios en esta sucursal</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card" style="max-width:500px">
+    <h3 style="margin:0 0 16px;font-size:15px">Agregar usuario a esta sucursal</h3>
+    <form method="POST" action="{{ url_for('admin.panel_nuevo_usuario', sid=sucursal.id) }}">
+      <div class="form-group">
+        <label class="form-label">Nombre completo *</label>
+        <input type="text" name="nombre" class="form-input" required>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label class="form-label">Usuario *</label>
+          <input type="text" name="usuario" class="form-input" required autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contraseña *</label>
+          <input type="password" name="password" class="form-input" required autocomplete="new-password">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rol</label>
+        <select name="rol" class="form-input">
+          <option value="operario">Operario</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Crear usuario</button>
+    </form>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════
+   TAB: PROMOCIONES
+══════════════════════════════════════════════════ #}
+<div id="panel-promociones" class="tab-panel" style="display:none">
+  <div class="card" style="margin-bottom:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0;font-size:15px;color:var(--accent)">Promociones de esta sucursal</h3>
+    </div>
+    <table class="table">
+      <thead>
+        <tr><th>Nombre</th><th>Tipo</th><th>Valor</th><th>Código</th><th>Vigencia</th><th>Estado</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for p in promociones %}
+        <tr>
+          <td><strong>{{ p.nombre }}</strong></td>
+          <td style="font-size:12px">{{ p.tipo }}</td>
+          <td>{{ p.valor }}{{ '%' if p.tipo == 'porcentaje' else ' MXN' }}</td>
+          <td><code style="font-size:12px;background:var(--bg-card);padding:2px 6px;border-radius:4px">{{ p.codigo or '—' }}</code></td>
+          <td style="font-size:12px;color:var(--text-sub)">
+            {{ p.fecha_inicio or '∞' }} — {{ p.fecha_fin or '∞' }}
+          </td>
+          <td><span class="badge {{ 'badge-success' if p.activa else 'badge-danger' }}" style="font-size:11px">{{ 'Activa' if p.activa else 'Inactiva' }}</span></td>
+          <td style="display:flex;gap:6px">
+            <form method="POST" action="{{ url_for('admin.panel_toggle_promocion', sid=sucursal.id, pid=p.id) }}">
+              <button class="btn btn-sm btn-secondary" type="submit">{{ 'Desactivar' if p.activa else 'Activar' }}</button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.panel_eliminar_promocion', sid=sucursal.id, pid=p.id) }}" onsubmit="return confirm('¿Eliminar esta promoción?')">
+              <button class="btn btn-sm" type="submit" style="background:#3a0000;color:#ff9999;border:1px solid #660000">Eliminar</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;color:var(--text-sub)">Sin promociones en esta sucursal</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card" style="max-width:540px">
+    <h3 style="margin:0 0 16px;font-size:15px">Nueva promoción</h3>
+    <form method="POST" action="{{ url_for('admin.panel_nueva_promocion', sid=sucursal.id) }}">
+      <div class="form-group">
+        <label class="form-label">Nombre *</label>
+        <input type="text" name="nombre" class="form-input" required>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select name="tipo" class="form-input">
+            <option value="porcentaje">Porcentaje %</option>
+            <option value="fijo">Monto fijo $</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valor</label>
+          <input type="number" name="valor" class="form-input" step="0.01" min="0" required>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label class="form-label">Código (opcional)</label>
+          <input type="text" name="codigo" class="form-input" style="text-transform:uppercase">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cliente específico</label>
+          <select name="cliente_id" class="form-input">
+            <option value="">— Todos —</option>
+            {% for c in clientes %}
+            <option value="{{ c.id }}">{{ c.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label class="form-label">Fecha inicio</label>
+          <input type="date" name="fecha_inicio" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha fin</label>
+          <input type="date" name="fecha_fin" class="form-input">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Crear promoción</button>
+    </form>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════
+   TAB: INSUMOS
+══════════════════════════════════════════════════ #}
+<div id="panel-insumos" class="tab-panel" style="display:none">
+  <div class="card" style="margin-bottom:20px">
+    <h3 style="margin:0 0 16px;font-size:15px;color:var(--accent)">Inventario de insumos</h3>
+    <table class="table">
+      <thead>
+        <tr><th>Nombre</th><th>Descripción</th><th>Costo</th><th>Precio</th><th>Stock</th><th>Mín.</th><th>Estado</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for i in insumos %}
+        <tr>
+          <td><strong>{{ i.nombre }}</strong></td>
+          <td style="font-size:12px;color:var(--text-sub)">{{ i.descripcion or '—' }}</td>
+          <td>${{ "%.2f"|format(i.costo or 0) }}</td>
+          <td>${{ "%.2f"|format(i.precio or 0) }}</td>
+          <td>
+            <span style="font-weight:700;color:{{ '#ff6666' if (i.stock or 0) <= (i.stock_minimo or 3) else 'var(--text)' }}">
+              {{ i.stock or 0 }}
+            </span>
+          </td>
+          <td style="color:var(--text-sub);font-size:12px">{{ i.stock_minimo or 3 }}</td>
+          <td><span class="badge {{ 'badge-success' if i.activo else 'badge-danger' }}" style="font-size:11px">{{ 'Activo' if i.activo else 'Inactivo' }}</span></td>
+          <td>
+            <form method="POST" action="{{ url_for('admin.panel_toggle_insumo', sid=sucursal.id, iid=i.id) }}" style="display:inline">
+              <button class="btn btn-sm btn-secondary" type="submit">{{ 'Desact.' if i.activo else 'Activ.' }}</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center;color:var(--text-sub)">Sin insumos en esta sucursal</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card" style="max-width:540px">
+    <h3 style="margin:0 0 16px;font-size:15px">Nuevo insumo</h3>
+    <form method="POST" action="{{ url_for('admin.panel_nuevo_insumo', sid=sucursal.id) }}">
+      <div class="form-group">
+        <label class="form-label">Nombre *</label>
+        <input type="text" name="nombre" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <input type="text" name="descripcion" class="form-input">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Costo $</label>
+          <input type="number" name="costo" class="form-input" step="0.01" min="0" value="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Precio $</label>
+          <input type="number" name="precio" class="form-input" step="0.01" min="0" value="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stock</label>
+          <input type="number" name="stock" class="form-input" min="0" value="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mín.</label>
+          <input type="number" name="stock_minimo" class="form-input" min="0" value="3">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Crear insumo</button>
+    </form>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════
+   TAB: IMPRESORAS
+══════════════════════════════════════════════════ #}
+<div id="panel-impresoras" class="tab-panel" style="display:none">
+  <div class="card" style="margin-bottom:20px">
+    <h3 style="margin:0 0 16px;font-size:15px;color:var(--accent)">Impresoras (configuración global)</h3>
+    <p style="color:var(--text-sub);font-size:12px;margin:0 0 16px">Las impresoras son compartidas entre todas las sucursales. La predeterminada se usa en recibos.</p>
+    <table class="table">
+      <thead>
+        <tr><th>Nombre</th><th>Sistema</th><th>Estado</th><th>Predeterminada</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for imp in impresoras %}
+        <tr>
+          <td><strong>{{ imp.nombre }}</strong></td>
+          <td style="font-size:12px;color:var(--text-sub)">{{ imp.nombre_sistema }}</td>
+          <td><span class="badge {{ 'badge-success' if imp.activa else 'badge-danger' }}" style="font-size:11px">{{ 'Activa' if imp.activa else 'Inactiva' }}</span></td>
+          <td>{% if imp.predeterminada %}<span class="badge badge-success" style="font-size:11px">⭐ Predeterminada</span>{% else %}—{% endif %}</td>
+          <td style="display:flex;gap:6px">
+            <form method="POST" action="{{ url_for('admin.panel_eliminar_impresora', sid=sucursal.id, iid=imp.id) }}" onsubmit="return confirm('¿Eliminar impresora?')">
+              <button class="btn btn-sm" type="submit" style="background:#3a0000;color:#ff9999;border:1px solid #660000">Eliminar</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align:center;color:var(--text-sub)">Sin impresoras registradas</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card" style="max-width:500px">
+    <h3 style="margin:0 0 16px;font-size:15px">Agregar impresora</h3>
+    <form method="POST" action="{{ url_for('admin.panel_nueva_impresora', sid=sucursal.id) }}">
+      <div class="form-group">
+        <label class="form-label">Nombre visible *</label>
+        <input type="text" name="nombre" class="form-input" required placeholder="Ej: Térmica principal">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nombre en el sistema *</label>
+        <input type="text" name="nombre_sistema" class="form-input" required placeholder="Nombre exacto en Windows/Linux">
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" name="predeterminada" id="pred_imp" value="1">
+        <label for="pred_imp">Establecer como predeterminada</label>
+      </div>
+      <button type="submit" class="btn btn-primary">Agregar impresora</button>
+    </form>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════
+   TAB: CLIENTES
+══════════════════════════════════════════════════ #}
+<div id="panel-clientes" class="tab-panel" style="display:none">
+  <div class="card">
+    <h3 style="margin:0 0 16px;font-size:15px;color:var(--accent)">Clientes de esta sucursal</h3>
+    {% if clientes %}
+    <table class="table">
+      <thead>
+        <tr><th>Nombre</th><th>Empresa</th><th>Teléfono</th><th>Ciudad</th><th>RFC</th></tr>
+      </thead>
+      <tbody>
+        {% for c in clientes %}
+        <tr>
+          <td><strong>{{ c.nombre }}</strong></td>
+          <td style="font-size:12px;color:var(--text-sub)">{{ c.empresa or '—' }}</td>
+          <td style="font-size:12px">{{ c.telefono or '—' }}</td>
+          <td style="font-size:12px">{{ c.ciudad or '—' }}</td>
+          <td style="font-size:12px;color:var(--text-sub)">{{ c.rfc or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="color:var(--text-sub);font-size:12px;margin-top:12px">Total: {{ clientes|length }} cliente(s)</p>
+    {% else %}
+    <p style="color:var(--text-sub);text-align:center;padding:24px">Sin clientes en esta sucursal</p>
+    {% endif %}
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════
+   TAB: HISTORIAL
+══════════════════════════════════════════════════ #}
+<div id="panel-historial" class="tab-panel" style="display:none">
+  <div class="card" style="margin-bottom:16px">
+    <h3 style="margin:0 0 12px;font-size:15px;color:var(--accent)">Historial de guías</h3>
+    <form method="GET" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+      <input type="hidden" name="tab" value="historial">
+      <div>
+        <label class="form-label" style="font-size:12px">Desde</label>
+        <input type="date" name="desde" class="form-input" value="{{ desde }}" style="padding:6px 10px;font-size:13px">
+      </div>
+      <div>
+        <label class="form-label" style="font-size:12px">Hasta</label>
+        <input type="date" name="hasta" class="form-input" value="{{ hasta }}" style="padding:6px 10px;font-size:13px">
+      </div>
+      <button type="submit" class="btn btn-primary" style="padding:6px 16px;font-size:13px">Filtrar</button>
+    </form>
+    <table class="table">
+      <thead>
+        <tr><th>Guía</th><th>Destinatario</th><th>Servicio</th><th>Operario</th><th>Pago</th><th>Total</th><th>Fecha</th><th>Estatus</th></tr>
+      </thead>
+      <tbody>
+        {% for g in guias %}
+        <tr>
+          <td style="font-size:11px;font-family:monospace">{{ g.numero_guia[-14:] if g.numero_guia else '—' }}</td>
+          <td>{{ g.destinatario_nombre }}</td>
+          <td style="font-size:12px;color:var(--text-sub)">{{ (g.servicio or '').split('—')[-1].strip()[:18] }}</td>
+          <td style="font-size:12px">{{ g.operario_nombre or '—' }}</td>
+          <td style="font-size:12px">{{ g.metodo_pago or '—' }}</td>
+          <td style="font-weight:700">${{ "%.2f"|format(g.precio_final or 0) }}</td>
+          <td style="font-size:11px;color:var(--text-sub)">{{ (g.creado_en or '')[:10] }}</td>
+          <td><span class="badge {{ 'badge-danger' if g.estatus == 'cancelada' else 'badge-success' }}" style="font-size:11px">{{ g.estatus or 'activa' }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center;color:var(--text-sub)">Sin guías en el período seleccionado</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
+      {% if guias %}
+      <p style="color:var(--text-sub);font-size:12px;margin:0">{{ guias|length }} guía(s) en el período seleccionado</p>
+      {% else %}
+      <p style="color:var(--text-sub);font-size:12px;margin:0">—</p>
+      {% endif %}
+      <p style="color:var(--text-sub);font-size:12px;margin:0">
+        Total histórico de esta sucursal: <strong>{{ totales.guias_total_historico or 0 }}</strong> guía(s)
+      </p>
+    </div>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════
+   TAB: TOTALES
+══════════════════════════════════════════════════ #}
+<div id="panel-totales" class="tab-panel" style="display:none">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">
+    <div class="card" style="text-align:center">
+      <div style="font-size:28px;font-weight:800;color:var(--accent)">${{ "%.2f"|format(totales.ventas_mes or 0) }}</div>
+      <div style="font-size:12px;color:var(--text-sub);margin-top:4px">Ventas este mes</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:28px;font-weight:800;color:#88ff88">{{ totales.guias_mes or 0 }}</div>
+      <div style="font-size:12px;color:var(--text-sub);margin-top:4px">Guías este mes</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:28px;font-weight:800;color:#aaaaff">{{ totales.clientes_total or 0 }}</div>
+      <div style="font-size:12px;color:var(--text-sub);margin-top:4px">Clientes registrados</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:28px;font-weight:800;color:#ffaa44">{{ totales.usuarios_activos or 0 }}</div>
+      <div style="font-size:12px;color:var(--text-sub);margin-top:4px">Usuarios activos</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 16px;font-size:15px;color:var(--accent)">Resumen por método de pago (mes actual)</h3>
+    {% if totales.por_pago %}
+    <table class="table">
+      <thead><tr><th>Método</th><th>Total</th></tr></thead>
+      <tbody>
+        {% for mp, monto in totales.por_pago.items() %}
+        <tr>
+          <td>{{ mp|capitalize }}</td>
+          <td style="font-weight:700">${{ "%.2f"|format(monto) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-sub);text-align:center;padding:16px">Sin ventas registradas este mes</p>
+    {% endif %}
+  </div>
+
+  {% if totales.insumos_bajo_stock %}
+  <div class="card" style="margin-top:16px;border:1px solid #663300">
+    <h3 style="margin:0 0 12px;font-size:14px;color:#ff9944">⚠️ Insumos bajo stock mínimo</h3>
+    {% for i in totales.insumos_bajo_stock %}
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span>{{ i.nombre }}</span>
+      <span style="color:#ff6666;font-weight:700">{{ i.stock }} / {{ i.stock_minimo }} mín.</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.tab-btn { border-radius:6px 6px 0 0 !important; }
+.tab-btn.active { color:var(--accent) !important; border-bottom-color:var(--accent) !important; background:var(--bg-card) !important; }
+.tab-btn:hover:not(.active) { color:var(--text) !important; background:var(--bg-card) !important; }
+</style>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).style.display = 'block';
+  document.getElementById('tab-btn-' + id).classList.add('active');
+  // Guardar en URL sin recargar
+  const url = new URL(window.location);
+  url.searchParams.set('tab', id);
+  history.replaceState(null, '', url);
+}
+// Al cargar, abrir el tab de la URL o el que vino del servidor
+const tabParam = new URLSearchParams(window.location.search).get('tab') || '{{ active_tab }}';
+if (tabParam) showTab(tabParam);
+</script>
+{% endblock %}

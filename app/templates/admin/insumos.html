@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Insumos - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">📦 Tienda de Insumos</h2>
+</div>
+
+<!-- ALERTAS DE STOCK -->
+{% for ins in insumos %}
+  {% if ins.activo %}
+    {% if ins.stock == 0 %}
+    <div style="background:#3a0000;border:1px solid #ff4444;border-radius:6px;padding:10px 14px;margin-bottom:8px;font-size:13px">
+      🚫 <strong>{{ ins.nombre }}</strong> — SIN EXISTENCIAS
+    </div>
+    {% elif ins.stock <= ins.stock_minimo %}
+    <div style="background:#2a1500;border:1px solid #f0a500;border-radius:6px;padding:10px 14px;margin-bottom:8px;font-size:13px">
+      ⚠️ <strong>{{ ins.nombre }}</strong> — Stock bajo: <strong style="color:#f0a500">{{ ins.stock }} piezas</strong> (mínimo {{ ins.stock_minimo }})
+    </div>
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+<!-- TABLA -->
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:20px">
+<div style="overflow-x:auto">
+<table class="table">
+  <thead>
+    <tr><th>#</th><th>Nombre</th><th>Descripción</th><th>Costo</th><th>Precio público</th><th>Stock</th><th>Estado</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for ins in insumos %}
+  <tr>
+    <td style="color:var(--text-sub)">{{ ins.id }}</td>
+    <td style="font-weight:600">{{ ins.nombre }}</td>
+    <td style="color:var(--text-sub);font-size:13px">{{ ins.descripcion }}</td>
+    <td style="color:#ff9999">${{ "%.2f"|format(ins.costo or 0) }}</td>
+    <td style="color:var(--gold);font-weight:600">${{ "%.2f"|format(ins.precio) }}</td>
+    <td>
+      {% if ins.stock == 0 %}
+        <span class="badge" style="background:#3a0000;color:#ff4444">SIN STOCK</span>
+      {% elif ins.stock <= ins.stock_minimo %}
+        <span class="badge" style="background:#2a1500;color:#f0a500">{{ ins.stock }} ⚠️</span>
+      {% else %}
+        <span class="badge" style="background:#0a2a0a;color:#88ff88">{{ ins.stock }}</span>
+      {% endif %}
+    </td>
+    <td><span class="badge" style="{% if ins.activo %}background:#0a2a0a;color:#88ff88{% else %}background:#3a0000;color:#ff9999{% endif %}">{{ 'Activo' if ins.activo else 'Inactivo' }}</span></td>
+    <td style="display:flex;gap:6px;flex-wrap:wrap">
+      <button onclick="abrirEditar({{ ins.id }},'{{ ins.nombre|e }}','{{ ins.descripcion|e }}',{{ ins.costo or 0 }},{{ ins.precio }},{{ ins.stock }},{{ ins.stock_minimo }},{{ ins.activo }})" class="btn btn-secondary btn-sm">✏️</button>
+      <button onclick="abrirRestock({{ ins.id }},'{{ ins.nombre|e }}')" class="btn btn-secondary btn-sm">📥 Stock</button>
+      <form method="POST" action="{{ url_for('admin.toggle_insumo', iid=ins.id) }}" style="display:inline">
+        <button type="submit" class="btn btn-secondary btn-sm">{{ 'Desactivar' if ins.activo else 'Activar' }}</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+  {% if not insumos %}<tr><td colspan="8" style="text-align:center;color:var(--text-sub);padding:24px">Sin insumos registrados</td></tr>{% endif %}
+  </tbody>
+</table>
+</div>
+</div>
+
+<!-- NUEVO INSUMO -->
+<div class="card" style="max-width:600px">
+  <div class="card-title">➕ Agregar Insumo</div>
+  <form method="POST" action="{{ url_for('admin.nuevo_insumo') }}">
+    <div class="form-grid">
+      <div class="form-group span-2"><label>Nombre *</label><input name="nombre" class="form-input" placeholder="Ej: Caja 30x20x15 cm" required/></div>
+      <div class="form-group span-2"><label>Descripción (aparece en recibo)</label><input name="descripcion" class="form-input" placeholder="Ej: Caja de cartón mediana"/></div>
+      <div class="form-group"><label>💰 Costo (lo que pagas tú) $</label><input name="costo" type="number" step="0.01" min="0" value="0" class="form-input" required/></div>
+      <div class="form-group"><label>🏷️ Precio público $</label><input name="precio" type="number" step="0.01" min="0" value="0" class="form-input" required/></div>
+      <div class="form-group"><label>📦 Stock inicial</label><input name="stock" type="number" min="0" value="0" class="form-input"/></div>
+      <div class="form-group"><label>🔔 Alerta si baja de</label><input name="stock_minimo" type="number" min="0" value="3" class="form-input"/></div>
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top:12px">Crear insumo</button>
+  </form>
+</div>
+
+<!-- MODAL EDITAR -->
+<div id="modal-editar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center">
+  <div class="card" style="width:520px;max-width:95vw">
+    <div class="card-title">✏️ Editar Insumo</div>
+    <form id="form-editar" method="POST">
+      <div class="form-grid">
+        <div class="form-group span-2"><label>Nombre *</label><input name="nombre" id="edit-nombre" class="form-input" required/></div>
+        <div class="form-group span-2"><label>Descripción</label><input name="descripcion" id="edit-desc" class="form-input"/></div>
+        <div class="form-group"><label>Costo $</label><input name="costo" id="edit-costo" type="number" step="0.01" min="0" class="form-input"/></div>
+        <div class="form-group"><label>Precio público $</label><input name="precio" id="edit-precio" type="number" step="0.01" min="0" class="form-input" required/></div>
+        <div class="form-group"><label>Stock</label><input name="stock" id="edit-stock" type="number" min="0" class="form-input"/></div>
+        <div class="form-group"><label>Alerta mínimo</label><input name="stock_minimo" id="edit-stock-min" type="number" min="0" class="form-input"/></div>
+        <input type="hidden" name="activo" id="edit-activo" value="1"/>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" onclick="cerrarModal('modal-editar')" class="btn btn-secondary">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL RESTOCK -->
+<div id="modal-restock" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center">
+  <div class="card" style="width:340px;max-width:95vw">
+    <div class="card-title">📥 Agregar Stock</div>
+    <p id="restock-nombre" style="color:var(--gold);font-weight:600;margin-bottom:12px"></p>
+    <form id="form-restock" method="POST">
+      <div class="form-group"><label>Piezas a agregar</label><input name="cantidad" type="number" min="1" value="1" class="form-input" id="restock-qty"/></div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button type="submit" class="btn btn-primary">Agregar</button>
+        <button type="button" onclick="cerrarModal('modal-restock')" class="btn btn-secondary">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function abrirEditar(id,nombre,desc,costo,precio,stock,stockMin,activo){
+  document.getElementById('edit-nombre').value=nombre;
+  document.getElementById('edit-desc').value=desc;
+  document.getElementById('edit-costo').value=costo;
+  document.getElementById('edit-precio').value=precio;
+  document.getElementById('edit-stock').value=stock;
+  document.getElementById('edit-stock-min').value=stockMin;
+  document.getElementById('edit-activo').value=activo;
+  document.getElementById('form-editar').action='/admin/insumos/'+id+'/editar';
+  document.getElementById('modal-editar').style.display='flex';
+}
+function abrirRestock(id,nombre){
+  document.getElementById('restock-nombre').textContent=nombre;
+  document.getElementById('restock-qty').value=1;
+  document.getElementById('form-restock').action='/admin/insumos/'+id+'/restock';
+  document.getElementById('modal-restock').style.display='flex';
+}
+function cerrarModal(id){ document.getElementById(id).style.display='none'; }
+</script>
+{% endblock %}

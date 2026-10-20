@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Clientes - PAQUETELLEGUE{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">👥 Clientes</h2>
+  <a href="{{ url_for('clientes.nuevo') }}" class="btn btn-gold">✚ Nuevo Cliente</a>
+</div>
+<div class="card card-sm" style="margin-bottom:12px">
+  <form method="GET" class="search-bar">
+    <input name="q" value="{{ q }}" class="form-input search-input" placeholder="Buscar por nombre, telefono, ciudad..."/>
+    <button type="submit" class="btn btn-secondary">Buscar</button>
+    {% if q %}<a href="{{ url_for('clientes.lista') }}" class="btn btn-secondary">Limpiar</a>{% endif %}
+  </form>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+<table class="table">
+  <thead>
+    <tr>
+      <th>Nombre</th>
+      <th>Empresa</th>
+      <th>Telefono</th>
+      <th>Ciudad</th>
+      <th>CP</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for c in clientes %}
+    <tr>
+      <td style="font-weight:600">{{ c.nombre }}</td>
+      <td style="color:var(--text-sub)">{{ c.empresa or '—' }}</td>
+      <td>{{ c.telefono or '—' }}</td>
+      <td>{{ c.ciudad or '—' }}{% if c.estado %}, {{ c.estado }}{% endif %}</td>
+      <td class="mono">{{ c.cp or '—' }}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <a href="{{ url_for('clientes.detalle', cid=c.id) }}" class="btn btn-secondary btn-sm">Ver</a>
+          <a href="{{ url_for('clientes.editar', cid=c.id) }}" class="btn btn-primary btn-sm">Editar</a>
+        </div>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="empty">
+      {% if q %}Sin resultados para "{{ q }}"{% else %}No hay clientes registrados aun{% endif %}
+    </td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}
