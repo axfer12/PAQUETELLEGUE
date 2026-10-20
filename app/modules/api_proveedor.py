@@ -961,13 +961,14 @@ def crear_guia(
         _INVALID_HS = {"", "9999.99", "9999.000000", None}
         _cat_key_fb = HS_ALIASES.get(_norm(contenido or ""), _norm(contenido or ""))
         _pais_dest_upper = (pais_destino or "US").upper()
-        if _cat_key_fb in HS_CODES_BY_COUNTRY:
-            _hs_fallback = (hs_code or "").strip() or HS_CODES_BY_COUNTRY[_cat_key_fb].get(_pais_dest_upper, HS_CODES_BY_COUNTRY[_cat_key_fb].get("US", HS_DEFAULT))
+        # Skydropx: usar HS_CODES_SKY (separado de EI). Skydropx no acepta 9999.x → fallback 4901
+        if _cat_key_fb in HS_CODES_SKY:
+            _hs_fallback = (hs_code or "").strip() or HS_CODES_SKY[_cat_key_fb].get(_pais_dest_upper, HS_CODES_SKY[_cat_key_fb].get("GLOBAL", HS_DEFAULT_SKY))
         else:
-            _hs_fallback = (hs_code or "").strip() or HS_DEFAULT_BY_COUNTRY.get(_pais_dest_upper, HS_DEFAULT)
+            _hs_fallback = (hs_code or "").strip() or HS_DEFAULT_BY_COUNTRY_SKY.get(_pais_dest_upper, HS_DEFAULT_SKY)
 
         _prods_factura = kwargs.get("productos_factura", [])
-        # EI usa price directamente en USD — garantizar mínimo 1.0
+        # Skydropx internacional usa precio en USD — garantizar mínimo 1.0
         _tc3 = _get_tc_mxn_usd()
         try:
             _vdu = float(valor_declarado_usd) if valor_declarado_usd else 0.0
@@ -981,7 +982,7 @@ def crear_guia(
         except (TypeError, ValueError):
             _valor_usd = 1.0
         _valor_mxn_para_ei = round(max(_valor_usd, 1.0), 2)
-        _log(f"EI crear_guia: price_USD={_valor_mxn_para_ei}")
+        _log(f"SKY INT crear_guia: price_USD={_valor_mxn_para_ei}")
         if _prods_factura:
             _products_parcel = []
             for _p in _prods_factura:
@@ -1044,7 +1045,7 @@ def crear_guia(
 
         # Estructura según Skydropx: consignment_note y package_type a nivel raíz
         # addresses solo llevan name/street1/company/phone/email/reference
-        # products a nivel raíz del shipment
+        # Skydropx internacional: addresses completas (con country_code, postal_code, area_level1/2)
         payload_int = {"shipment": {
             "quotation_id":          quotation_id,
             "rate_id":               rate_id,
@@ -1054,47 +1055,51 @@ def crear_guia(
             "consignment_note":      _cn_code,
             "package_type":          consignment_note_packaging_code,
             "address_from": {
-                "name":        str(nombre_origen),
-                "street1":     str(calle_origen)[:45],
-                "company":     empresa_origen or "N/A",
-                "phone":       tel_origen,
-                "email":       email_origen,
-                "reference":   ref_origen or "-",
-                "area_level3": _normalizar_colonia(colonia_origen) or "NA",
+                "name":         str(nombre_origen),
+                "street1":      str(calle_origen)[:45],
+                "company":      empresa_origen or "N/A",
+                "phone":        tel_origen,
+                "email":        email_origen,
+                "reference":    ref_origen or "-",
+                "country_code": pais_origen or "MX",
+                "postal_code":  cp_origen or "",
+                "area_level1":  estado_origen or "",
+                "area_level2":  ciudad_origen or "",
+                "area_level3":  _normalizar_colonia(colonia_origen) or "NA",
             },
             "address_to": {
-                "name":        str(nombre_destino),
-                "street1":     str(calle_destino)[:45],
-                "company":     empresa_destino or "N/A",
-                "phone":       tel_destino,
-                "email":       email_destino or email_origen,
-                "reference":   ref_destino or "-",
-                "area_level3": _normalizar_colonia(colonia_destino) or "NA",
+                "name":         str(nombre_destino),
+                "street1":      str(calle_destino)[:45],
+                "company":      empresa_destino or "N/A",
+                "phone":        tel_destino,
+                "email":        email_destino or email_origen,
+                "reference":    ref_destino or "-",
+                "country_code": pais_destino or "US",
+                "postal_code":  cp_destino or "",
+                "area_level1":  estado_destino or "",
+                "area_level2":  ciudad_destino or "",
+                "area_level3":  _normalizar_colonia(colonia_destino) or "NA",
             },
             "parcels": [{
-                "package_number":    "1",
-                "package_protected": False,
-                "declared_value":    float(_valor_mxn_para_ei),
-                "weight":            float(peso),
-                "height":            int(alto),
-                "width":             int(ancho),
-                "length":            int(largo),
-                # EI requiere estos campos dentro de cada parcel
-                "consignment_note":  _cn_code,
-                "package_type":      consignment_note_packaging_code,
+                "weight":        float(peso),
+                "height":        int(alto),
+                "width":         int(ancho),
+                "length":        int(largo),
+                "declared_value": float(_valor_mxn_para_ei),
+                "products": _products_parcel,  # Skydropx también acepta products dentro del parcel
             }],
             "products": _products_parcel,
         }}
-        _log(f"EI PARCEL declared_value={_valor_mxn_para_ei} tipo={type(_valor_mxn_para_ei)}")
-        _log(f"INT PRODUCTS: {json.dumps(_products_parcel)}")
-        _log(f"POST /shipments (EI internacional)")
-        _log(f"PAYLOAD INT COMPLETO: {json.dumps(payload_int)[:3000]}")
+        _log(f"SKY INT PARCEL declared_value={_valor_mxn_para_ei} tipo={type(_valor_mxn_para_ei)}")
+        _log(f"SKY INT PRODUCTS: {json.dumps(_products_parcel)}")
+        _log(f"POST /shipments (SKY internacional)")
+        _log(f"SKY INT PAYLOAD COMPLETO: {json.dumps(payload_int)[:3000]}")
         try:
-            resp = _ei_request("POST", "/shipments", data=payload_int, timeout=90)
+            resp = _request("POST", "/shipments", data=payload_int, timeout=90)
         except APIError as _ae:
-            _log(f"ERROR SHIPMENT EI: {_ae}")
+            _log(f"ERROR SHIPMENT SKY INT: {_ae}")
             raise
-        _log(f"GUIA INT RESP: {json.dumps(resp)[:600]}")
+        _log(f"SKY INT GUIA RESP: {json.dumps(resp)[:600]}")
         # Mismo flujo que nacionales — si está in_progress, retornar pending para polling
         _data_i  = resp.get("data", resp)
         _attrs_i = _data_i.get("attributes", _data_i) if isinstance(_data_i, dict) else {}
