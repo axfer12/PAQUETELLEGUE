@@ -763,6 +763,11 @@ def _parsear_rates(rates_raw, qid, es_internacional=False):
         status  = (attrs.get("status") or "").lower()
         if status in INVALIDOS:
             continue
+        # Excluir tarifas que requieren verificación de dirección de origen —
+        # Skydropx rechaza el shipment con 422 si la dirección no está verificada para ese carrier.
+        if attrs.get("requires_origin_verification"):
+            _log(f"Rate EXCLUIDO (requires_origin_verification): {r.get('id','')} {attrs.get('provider_name','')} {attrs.get('provider_service_name','')}")
+            continue
         precio_s = attrs.get("total") or attrs.get("amount") or attrs.get("price") or "0"
         try: precio = float(str(precio_s).replace(",",""))
         except: precio = 0.0
