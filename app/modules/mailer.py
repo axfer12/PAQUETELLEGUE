@@ -1,65 +1,55 @@
 """
-Módulo de envío de correos — API Resend (https://resend.com).
-Render bloquea SMTP (puertos 465 y 587), por eso se usa HTTP.
+Módulo de envío de correos — API SendGrid (https://sendgrid.com).
+Render bloquea SMTP; SendGrid usa HTTP y no tiene el bloqueo de Cloudflare.
 
 Variables de entorno necesarias:
-  RESEND_API_KEY  API key de Resend (empieza con re_...)
-  MAIL_FROM_EMAIL correo remitente verificado en Resend (ej: noreply@paquetellegue.shop)
-                  o usa el dominio sandbox: onboarding@resend.dev (solo envía a tu propio email)
-  MAIL_FROM       nombre que aparece (default: PAQUETELLEGUE)
-  APP_URL         URL base del sistema, ej: https://paquetellegue.shop
+  SENDGRID_API_KEY  API key de SendGrid (empieza con SG.)
+  MAIL_FROM_EMAIL   correo remitente verificado en SendGrid (ej: noreply@paquetellegue.shop)
+  MAIL_FROM         nombre que aparece (default: PAQUETELLEGUE)
+  APP_URL           URL base del sistema, ej: https://paquetellegue.shop
 """
 import os
 import json
 import urllib.request
 import urllib.error
 
-RESEND_API_KEY  = os.environ.get("RESEND_API_KEY", "")
-MAIL_FROM_EMAIL = os.environ.get("MAIL_FROM_EMAIL", "onboarding@resend.dev")
-MAIL_FROM       = os.environ.get("MAIL_FROM", "PAQUETELLEGUE")
-APP_URL         = os.environ.get("APP_URL", "https://paquetellegue.shop").rstrip("/")
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
+MAIL_FROM_EMAIL  = os.environ.get("MAIL_FROM_EMAIL", "")
+MAIL_FROM        = os.environ.get("MAIL_FROM", "PAQUETELLEGUE")
+APP_URL          = os.environ.get("APP_URL", "https://paquetellegue.shop").rstrip("/")
+
+print(f"[MAILER INIT] SG_KEY_len={len(SENDGRID_API_KEY)} FROM_EMAIL={MAIL_FROM_EMAIL!r}")
 
 
 def _send(to: str, subject: str, html: str):
-    """Envía un correo HTML vía API de Resend usando requests si está disponible."""
-    payload = {
-        "from":    f"{MAIL_FROM} <{MAIL_FROM_EMAIL}>",
-        "to":      [to],
+    """Envía un correo HTML vía API de SendGrid."""
+    api_key    = os.environ.get("SENDGRID_API_KEY", "").strip()
+    from_email = os.environ.get("MAIL_FROM_EMAIL", "").strip()
+    from_name  = os.environ.get("MAIL_FROM", MAIL_FROM)
+    payload = json.dumps({
+        "personalizations": [{"to": [{"email": to}]}],
+        "from": {"email": from_email, "name": from_name},
         "subject": subject,
-        "html":    html,
-    }
-    headers = {
-        "Authorization": f"Bearer {RESEND_API_KEY}",
-        "Content-Type":  "application/json",
-    }
+        "content": [{"type": "text/html", "value": html}],
+    }).encode("utf-8")
 
-    # Intentar con requests (maneja mejor proxies y TLS)
-    try:
-        import requests as _req
-        r = _req.post("https://api.resend.com/emails",
-                      json=payload, headers=headers, timeout=15)
-        print(f"[MAIL] Resend status={r.status_code} body={r.text[:200]}")
-        if not r.ok:
-            raise Exception(f"Resend error {r.status_code}: {r.text}")
-        return r.json()
-    except ImportError:
-        pass
-
-    # Fallback: urllib
-    body_bytes = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
-        "https://api.resend.com/emails",
-        data=body_bytes, headers=headers, method="POST",
+        "https://api.sendgrid.com/v3/mail/send",
+        data    = payload,
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type":  "application/json",
+        },
+        method = "POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
-            resp_body = r.read()
-            print(f"[MAIL OK] Resend: {resp_body.decode('utf-8', errors='replace')[:200]}")
-            return json.loads(resp_body)
+            print(f"[MAIL OK] SendGrid status={r.status}")
+            return True
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
-        print(f"[MAIL ERROR] code={e.code} body={body}")
-        raise Exception(f"Resend error {e.code}: {body}")
+        print(f"[MAIL ERROR] SendGrid code={e.code} body={body}")
+        raise Exception(f"SendGrid error {e.code}: {body}")
     except Exception as e:
         print(f"[MAIL ERROR] {type(e).__name__}: {e}")
         raise
@@ -85,11 +75,12 @@ def enviar_reset_password(to: str, nombre: str, token: str):
             </tr>
             <tr>
               <td style="padding:32px 36px">
-                <h2 style="color:#F5E6C8;margin:0 0 12px">Restablece tu contraseña</h2>
+                <h2 style="color:#F5E6C8;margin:0 0 12px">Restablece tu contrase&#241;a</h2>
                 <p style="color:#9A8A6A;font-size:14px;margin:0 0 24px">
                   Hola <strong style="color:#F5E6C8">{nombre}</strong>,<br><br>
-                  Recibimos una solicitud para restablecer la contraseña de tu cuenta.<br>
-                  Haz clic en el botón de abajo. El enlace expira en <strong style="color:#C9A84C">1 hora</strong>.
+                  Recibimos una solicitud para restablecer la contrase&#241;a de tu cuenta.<br>
+                  Haz clic en el bot&#243;n de abajo. El enlace expira en
+                  <strong style="color:#C9A84C">1 hora</strong>.
                 </p>
                 <table cellpadding="0" cellspacing="0" width="100%">
                   <tr><td align="center">
@@ -97,16 +88,18 @@ def enviar_reset_password(to: str, nombre: str, token: str):
                        style="display:inline-block;background:#C9A84C;color:#000;
                               text-decoration:none;padding:14px 36px;border-radius:8px;
                               font-weight:700;font-size:15px;letter-spacing:1px">
-                      RESTABLECER CONTRASEÑA →
+                      RESTABLECER CONTRASE&#209;A &#8594;
                     </a>
                   </td></tr>
                 </table>
                 <p style="color:#6a5a4a;font-size:12px;margin:24px 0 0;word-break:break-all">
-                  Si el botón no funciona, copia este enlace:<br>
+                  Si el bot&#243;n no funciona, copia este enlace:<br>
                   <a href="{link}" style="color:#C9A84C">{link}</a>
                 </p>
-                <p style="color:#4a3a2a;font-size:11px;margin:16px 0 0;border-top:1px solid #3a3020;padding-top:16px">
-                  Si no solicitaste este cambio, ignora este correo. Tu contraseña no cambiará.
+                <p style="color:#4a3a2a;font-size:11px;margin:16px 0 0;
+                          border-top:1px solid #3a3020;padding-top:16px">
+                  Si no solicitaste este cambio, ignora este correo.
+                  Tu contrase&#241;a no cambiar&#225;.
                 </p>
               </td>
             </tr>
@@ -116,9 +109,11 @@ def enviar_reset_password(to: str, nombre: str, token: str):
     </body>
     </html>
     """
-    _send(to, "Restablece tu contraseña — PAQUETELLEGUE", html)
+    _send(to, "Restablece tu contrasena - PAQUETELLEGUE", html)
 
 
 def esta_configurado() -> bool:
-    """Devuelve True si la API key de Resend está configurada."""
-    return bool(RESEND_API_KEY)
+    """Devuelve True si la API key de SendGrid y el remitente están configurados."""
+    key   = os.environ.get("SENDGRID_API_KEY", "").strip()
+    email = os.environ.get("MAIL_FROM_EMAIL", "").strip()
+    return bool(key and email)
