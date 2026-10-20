@@ -1,5 +1,5 @@
 // PAQUETELLEGUE WEB - nueva_guia.js
-let _rateSeleccionado=null,_descuento=0,_promoId=null,_guiaId=null,_clienteId=null,_quotationIdActual=null;
+let _rateSeleccionado=null,_descuento=0,_promoId=null,_guiaId=null,_clienteId=null,_quotationIdActual=null,_quotationIdsActuales=new Set();
 let _promos=[]; // lista de promos acumuladas [{codigo,descuento,promo_id,nombre}]
 let _precioBaseGuia=0, _insumosCarrito=[], _insumosData=[];
 const _cpCache={};
@@ -393,7 +393,7 @@ async function cotizar(){
   for(const[id,lbl] of Object.entries(reqs)){const el=document.getElementById(id);if(!el||!el.value.trim()){alert("Falta: "+lbl);return;}}
   btn.disabled=true;btn.textContent="Cotizando...";
   cont.innerHTML="<div class=rates-loading>Consultando...</div>";
-  document.getElementById("panel-generar").classList.add("hidden");_rateSeleccionado=null;_quotationIdActual=null;
+  document.getElementById("panel-generar").classList.add("hidden");_rateSeleccionado=null;_quotationIdActual=null;_quotationIdsActuales=new Set();
   const payload={
     peso:parseFloat(document.getElementById("peso")?.value)||1,
     alto:parseFloat(document.getElementById("alto")?.value)||10,
@@ -433,7 +433,11 @@ async function cotizar(){
       throw new Error(d.error);
     }
     _renderRates(d.rates);
-    if(d.rates && d.rates.length) _quotationIdActual = d.rates[0].quotation_id;
+    // Guardar TODOS los quotation IDs de esta cotización (EI y Skydropx tienen IDs distintos)
+    if(d.rates && d.rates.length){
+      _quotationIdsActuales = new Set(d.rates.map(r=>r.quotation_id).filter(Boolean));
+      _quotationIdActual = d.rates[0].quotation_id; // compatibilidad
+    }
   }catch(e){cont.innerHTML="<div class=rates-empty style=color:#ff6666>Error: "+e.message+"</div>";}
   finally{btn.disabled=false;btn.textContent="Cotizar Envio";}
 }
@@ -514,7 +518,8 @@ function _mostrarModalArancelesUS(onAceptar){
 async function generarGuia(){
   if(!_rateSeleccionado){alert("Selecciona un servicio");return;}
   // Validar que el rate sea de la cotización actual
-  if(_quotationIdActual && _rateSeleccionado.quotation_id !== _quotationIdActual){
+  // EI y Skydropx tienen quotation IDs distintos — verificar contra todos los IDs actuales
+  if(_quotationIdsActuales.size > 0 && _rateSeleccionado.quotation_id && !_quotationIdsActuales.has(_rateSeleccionado.quotation_id)){
     alert("La cotización ha cambiado. Por favor selecciona un servicio de la lista actualizada.");
     return;
   }
@@ -726,7 +731,7 @@ function descargarRecibo(){
 // ── Nueva Guia ────────────────────────────────────────
 function nuevaGuia(){
   if(typeof _limpiarBorrador === 'function') _limpiarBorrador();
-  _rateSeleccionado=null;_descuento=0;_promoId=null;_guiaId=null;_clienteId=null;_numProductos=1;_promos=[];_renderPromos();
+  _rateSeleccionado=null;_descuento=0;_promoId=null;_guiaId=null;_clienteId=null;_numProductos=1;_promos=[];_quotationIdActual=null;_quotationIdsActuales=new Set();_renderPromos();
   // Limpiar artículos internacionales — dejar solo el primero en blanco
   const listaProductos = document.getElementById('lista-productos');
   if(listaProductos){
