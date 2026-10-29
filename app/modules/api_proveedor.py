@@ -1202,14 +1202,42 @@ def _parsear_guia(resp):
     }
 
 def descargar_guia_pdf(label_url: str) -> bytes:
-    sess = _get_session()
+    """
+    Descarga el PDF de la guía desde la URL del proveedor.
+    Usa una sesión requests SIN proxy para evitar bloqueos del proxy de Render
+    con URLs de CDN externas (Skydropx, EI, etc.).
+    """
+    import requests as _req
+    _VERIFY = os.environ.get("REQUESTS_CA_BUNDLE") or True
     try:
-        if sess:
-            r = sess.get(label_url, timeout=30); r.raise_for_status(); return r.content
-        else:
+        # Sesión limpia sin proxy — las URLs de etiquetas son CDN públicos
+        # que no requieren autenticación pero el proxy de Render puede bloquearlas
+        _s = _req.Session()
+        _s.proxies = {}  # Sin proxy
+        r = _s.get(label_url, timeout=30, verify=_VERIFY)
+        r.raise_for_status()
+        # Verificar que es realmente un PDF o imagen
+        ct = r.headers.get("Content-Type", "")
+        if len(r.content) < 100:
+            raise APIError(f"Respuesta vacía o muy pequeña ({len(r.content)} bytes)")
+        return r.content
+    except APIError:
+        raise
+    except Exception as e:
+        # Fallback: intentar con urllib (sin proxy por defecto en Render)
+        try:
             import urllib.request
-            with urllib.request.urlopen(label_url, timeout=30) as r: return r.read()
-    except Exception as e: raise APIError(f"Error descargando PDF: {e}")
+            import urllib.error
+            req = urllib.request.Request(label_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                data = r.read()
+                if len(data) < 100:
+                    raise APIError(f"Respuesta vacía en fallback ({len(data)} bytes)")
+                return data
+        except APIError:
+            raise
+        except Exception as e2:
+            raise APIError(f"Error descargando PDF: {e} | fallback: {e2}")
 
 def guardar_label_pdf(label_url: str, ruta_destino: str) -> str:
     """
