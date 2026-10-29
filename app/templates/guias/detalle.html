@@ -15,6 +15,7 @@
     {% if guia.destinatario_pais and guia.destinatario_pais != 'MX' %}
     <button class="btn btn-secondary" onclick="imprimirInvoice({{ guia.id }})">📄 Invoice</button>
     <a href="{{ url_for('impresion.invoice_download', guia_id=guia.id) }}" target="_blank" class="btn btn-secondary">⬇ Invoice PDF</a>
+    <a href="{{ url_for('guias.factura_comercial_pdf', guia_id=guia.id) }}" target="_blank" class="btn btn-gold">📋 Factura Comercial</a>
     {% endif %}
     {% if current_user.is_admin and guia.estatus != 'cancelada' and guia.shipment_id_proveedor %}
     <button class="btn btn-danger" onclick="cancelarGuia({{ guia.id }})">✕ Cancelar</button>
