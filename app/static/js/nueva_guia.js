@@ -270,14 +270,27 @@ function _actualizarTotalesProductos(){
 
 function _getProductos(){
   const rows = document.querySelectorAll('.producto-row');
-  return Array.from(rows).map(row=>({
-    description_en: row.querySelector('.prod-desc')?.value.trim() || 'General merchandise',
-    quantity:       parseInt(row.querySelector('.prod-qty')?.value)  || 1,
-    price:          parseFloat(row.querySelector('.prod-price')?.value) || 1,
-    weight:         parseFloat(row.querySelector('.prod-weight')?.value) || 0.5,
-    hs_code:        row.querySelector('.prod-hs')?.value.trim() || '',
-    country_code:   'MX',
-  }));
+  return Array.from(rows).map(row=>{
+    const desc_en  = row.querySelector('.prod-desc')?.value.trim() || 'General merchandise';
+    const qty      = parseInt(row.querySelector('.prod-qty')?.value)  || 1;
+    const price    = parseFloat(row.querySelector('.prod-price')?.value) || 1;
+    const weight   = parseFloat(row.querySelector('.prod-weight')?.value) || 0.5;
+    const hs_code  = row.querySelector('.prod-hs')?.value.trim() || '';
+    // description_es: usar mismo valor que desc_en si no hay campo separado
+    const desc_es  = row.querySelector('.prod-desc-es')?.value.trim() || desc_en;
+    const country  = row.querySelector('.prod-country')?.value.trim() || 'MX';
+    return {
+      description_en:    desc_en,
+      description_es:    desc_es,
+      quantity:          qty,
+      price:             price,         // precio total del producto (qty * unit_price)
+      unit_price:        price,         // también como unit_price para compatibilidad con PDF
+      weight:            weight,
+      hs_code:           hs_code,
+      country_code:      country,
+      country_of_origin: country,       // alias para factura_comercial.py
+    };
+  });
 }
 
 // Actualizar totales en tiempo real al cargar
