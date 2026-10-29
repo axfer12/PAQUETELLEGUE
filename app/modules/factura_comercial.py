@@ -494,19 +494,26 @@ def generar_pdf_factura(remitente: dict, destinatario: dict,
     total_peso  = 0.0
     total_items = 0
     for p in productos:
-        subtotal = p.get("price", p["unit_price"] * p["quantity"])
+        _qty       = int(p.get("quantity") or 1)
+        _uprice    = float(p.get("unit_price") or p.get("price") or 0.0)
+        _weight    = float(p.get("weight") or 0.0)
+        _desc_es   = str(p.get("description_es") or p.get("description_en") or "Mercancía")
+        _desc_en   = str(p.get("description_en") or p.get("description_es") or "General merchandise")
+        _hs        = str(p.get("hs_code") or "")
+        _origen    = str(p.get("country_of_origin") or p.get("country_code") or "MX")
+        subtotal   = float(p.get("price", _uprice * _qty))
         total_usd   += subtotal
-        total_peso  += p["weight"] * p["quantity"]
-        total_items += p["quantity"]
+        total_peso  += _weight * _qty
+        total_items += _qty
         prod_rows.append([
-            Paragraph(p["description_es"], s_normal),
-            Paragraph(p["description_en"], s_normal),
-            Paragraph(p["hs_code"],        s_normal),
-            Paragraph(str(p["quantity"]),  s_normal),
-            Paragraph(f"${p['unit_price']:,.2f}", s_normal),
+            Paragraph(_desc_es,          s_normal),
+            Paragraph(_desc_en,          s_normal),
+            Paragraph(_hs,               s_normal),
+            Paragraph(str(_qty),         s_normal),
+            Paragraph(f"${_uprice:,.2f}", s_normal),
             Paragraph(f"${subtotal:,.2f}", s_normal),
-            Paragraph(f"{p['weight']:.2f}", s_normal),
-            Paragraph(p["country_of_origin"], s_normal),
+            Paragraph(f"{_weight:.2f}",  s_normal),
+            Paragraph(_origen,           s_normal),
         ])
 
     # Fila total
