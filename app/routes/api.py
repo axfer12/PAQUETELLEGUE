@@ -206,10 +206,89 @@ def generar_guia():
             "sucursal_id": current_user.sucursal_id,
         }
         guia_bd = db.crear_guia(data_guia)
-        return jsonify({"ok": True, "guia_id": guia_bd["id"] if guia_bd else None,
+        guia_id_creada = guia_bd["id"] if guia_bd else None
+
+        # ── Generar Factura Comercial PDF para envíos internacionales ──────
+        _pais_dest_fc = (dest.get("pais") or "MX").strip().upper()
+        _productos_factura = (d.get("paquete") or {}).get("productos_factura") or []
+        _pdf_factura_path = None
+        if _pais_dest_fc != "MX" and _productos_factura:
+            try:
+                from app.modules.factura_comercial import generar_pdf_factura
+                # Normalizar cada producto al formato que espera generar_pdf_factura
+                _prods_norm = []
+                for _p in _productos_factura:
+                    _desc_en = str(_p.get("description_en") or _p.get("descripcion") or paq.get("contenido","General merchandise"))
+                    _desc_es = str(_p.get("description_es") or _desc_en)
+                    _qty     = int(_p.get("quantity") or _p.get("cantidad") or 1)
+                    _uprice  = float(_p.get("unit_price") or _p.get("price") or 1.0)
+                    _total   = _uprice  # precio ya es por unidad desde el JS
+                    _weight  = float(_p.get("weight") or _p.get("peso") or round(float(paq.get("peso",1))/_qty, 3))
+                    _hs      = str(_p.get("hs_code") or "")
+                    _origen  = str(_p.get("country_of_origin") or _p.get("country_code") or "MX").upper()
+                    _prods_norm.append({
+                        "description_es":    _desc_es,
+                        "description_en":    _desc_en,
+                        "hs_code":           _hs,
+                        "quantity":          _qty,
+                        "unit_price":        _uprice,
+                        "price":             round(_uprice * _qty, 2),
+                        "weight":            _weight,
+                        "country_of_origin": _origen,
+                    })
+                _rem_fc = {
+                    "nombre":   rem.get("nombre",""),
+                    "empresa":  rem.get("empresa",""),
+                    "calle":    rem.get("calle",""),
+                    "colonia":  rem.get("colonia",""),
+                    "ciudad":   rem.get("ciudad",""),
+                    "estado":   rem.get("estado",""),
+                    "cp":       rem.get("cp",""),
+                    "pais":     rem.get("pais","MX"),
+                    "telefono": rem.get("telefono",""),
+                    "email":    rem.get("email",""),
+                }
+                _dest_fc = {
+                    "nombre":   dest.get("nombre",""),
+                    "empresa":  dest.get("empresa",""),
+                    "calle":    dest.get("calle",""),
+                    "colonia":  dest.get("colonia",""),
+                    "ciudad":   dest.get("ciudad",""),
+                    "estado":   dest.get("estado",""),
+                    "cp":       dest.get("cp",""),
+                    "pais":     _pais_dest_fc,
+                    "telefono": dest.get("telefono",""),
+                    "email":    dest.get("email",""),
+                }
+                _pdf_factura_path = generar_pdf_factura(
+                    remitente=_rem_fc,
+                    destinatario=_dest_fc,
+                    productos=_prods_norm,
+                    purpose=d.get("shipment_purpose","personal"),
+                )
+                # Guardar ruta del PDF de factura en la BD
+                if guia_id_creada and _pdf_factura_path:
+                    try:
+                        conn_fc = db.get_connection()
+                        cur_fc  = conn_fc.cursor()
+                        ph_fc   = db._ph()
+                        cur_fc.execute(
+                            f"UPDATE guias SET pdf_path={ph_fc} WHERE id={ph_fc}",
+                            (_pdf_factura_path, guia_id_creada)
+                        )
+                        conn_fc.commit(); conn_fc.close()
+                    except Exception:
+                        pass
+            except Exception as _e_fc:
+                import sys
+                print(f"[FACTURA COMERCIAL] Error generando PDF: {_e_fc}", file=sys.stderr, flush=True)
+                # No abortar la creación de guía por error en factura comercial
+
+        return jsonify({"ok": True, "guia_id": guia_id_creada,
                         "numero_guia": num_guia, "label_url": envio.get("label_url",""),
                         "carrier": envio.get("carrier",""), "precio_final": precio_final,
                         "costo_seguro": costo_seguro,
+                        "factura_pdf": bool(_pdf_factura_path),
                         "proveedor": "ei" if dest.get("pais","MX").upper() != "MX" else "sky"})
     except api.APIError as e:
         msg = str(e)
