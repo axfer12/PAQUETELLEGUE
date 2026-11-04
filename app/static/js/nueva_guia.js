@@ -215,6 +215,26 @@ function _crearFilaProducto(idx){
         <label style="font-size:11px">HS Code (opcional)</label>
         <input class="form-input prod-hs" placeholder="ej. 6109.10" maxlength="12"/>
       </div>
+      <div class="form-group span-2">
+        <label style="font-size:11px">¿Qué es? / What is it? <span style="color:var(--text-sub)">(FedEx)</span></label>
+        <input class="form-input prod-what-is-it" placeholder="ej. Prenda de vestir, Accesorio electrónico, Documento"/>
+      </div>
+      <div class="form-group span-2">
+        <label style="font-size:11px">¿De qué está hecho? / Material <span style="color:var(--text-sub)">(FedEx)</span></label>
+        <input class="form-input prod-material" placeholder="ej. 100% Cotton, Plastic ABS, Paper"/>
+      </div>
+      <div class="form-group">
+        <label style="font-size:11px">País de fabricación <span style="color:var(--text-sub)">(FedEx)</span></label>
+        <input class="form-input prod-manufactured-in" placeholder="MX" value="MX" maxlength="2" style="text-transform:uppercase"/>
+      </div>
+      <div class="form-group">
+        <label style="font-size:11px">¿Para qué es? / Intended use <span style="color:var(--text-sub)">(FedEx)</span></label>
+        <input class="form-input prod-intended-use" placeholder="ej. Personal use, Gift, Commercial sale"/>
+      </div>
+      <div class="form-group span-2">
+        <label style="font-size:11px">Descripción detallada <span style="color:var(--text-sub)">(opcional)</span></label>
+        <input class="form-input prod-detailed-desc" placeholder="Descripción adicional para aduana (opcional)"/>
+      </div>
     </div>`;
   return div;
 }
@@ -279,6 +299,14 @@ function _getProductos(){
     // description_es: usar mismo valor que desc_en si no hay campo separado
     const desc_es  = row.querySelector('.prod-desc-es')?.value.trim() || desc_en;
     const country  = row.querySelector('.prod-country')?.value.trim() || 'MX';
+
+    // ── NUEVOS CAMPOS FEDEX ──────────────────────────────────────────────────
+    const what_is_it      = row.querySelector('.prod-what-is-it')?.value.trim()      || desc_en;
+    const material        = row.querySelector('.prod-material')?.value.trim()        || '';
+    const manufactured_in = (row.querySelector('.prod-manufactured-in')?.value.trim() || country).toUpperCase().slice(0,2);
+    const intended_use    = row.querySelector('.prod-intended-use')?.value.trim()    || '';
+    const detailed_desc   = row.querySelector('.prod-detailed-desc')?.value.trim()   || '';
+
     return {
       description_en:    desc_en,
       description_es:    desc_es,
@@ -289,6 +317,20 @@ function _getProductos(){
       hs_code:           hs_code,
       country_code:      country,
       country_of_origin: country,       // alias para factura_comercial.py
+
+      // Campos FedEx — nombres en inglés
+      what_is_it:            what_is_it,
+      material:              material,
+      manufactured_in:       manufactured_in,
+      intended_use:          intended_use,
+      detailed_description:  detailed_desc,
+
+      // Aliases en español para compatibilidad con el backend
+      que_es:                what_is_it,
+      de_que_esta_hecho:     material,
+      donde_se_fabrico:      manufactured_in,
+      para_que_es:           intended_use,
+      descripcion_detallada: detailed_desc,
     };
   });
 }
