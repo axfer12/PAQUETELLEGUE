@@ -1000,16 +1000,47 @@ def crear_guia(
                 # Si el precio viene en MXN (>500), convertir a USD
                 if _p_price > 200 and _tc3 > 1:
                     _p_price = round(_p_price / _tc3, 2)
+                _p_origen = (_p.get("country_code") or _p.get("country_of_origin") or pais_origen or "MX").upper()
+                # ── NUEVOS CAMPOS FEDEX ──────────────────────────────────────────────
+                _what_is_it   = str(_p.get("what_is_it")   or _p.get("que_es")            or _desc_en)
+                _material     = str(_p.get("material")     or _p.get("de_que_esta_hecho") or "")
+                _made_in      = str(_p.get("manufactured_in") or _p.get("donde_se_fabrico") or _p_origen)
+                _intended_use = str(_p.get("intended_use") or _p.get("para_que_es")       or "")
+                _detail       = str(_p.get("detailed_description") or _p.get("descripcion_detallada") or "")
+                # Construir descripción enriquecida para Skydropx (concatena en description_en)
+                _extras = []
+                if _what_is_it and _what_is_it != _desc_en:
+                    _extras.append(_what_is_it)
+                if _material:
+                    _extras.append(f"Material: {_material}")
+                if _intended_use:
+                    _extras.append(f"Use: {_intended_use}")
+                if _detail:
+                    _extras.append(_detail)
+                _desc_en_full = _desc_en + (" | " + " | ".join(_extras) if _extras else "")
                 _products_parcel.append({
                     "description":         _desc_es[:60],
-                    "description_en":      _desc_en[:60],
+                    "description_en":      _desc_en_full[:120],
                     "hs_code":             _p_hs,
                     "quantity":            _qty,
                     "price":               round(_p_price, 2),
                     "weight":              float(_p.get("weight") or _p.get("peso") or round(float(peso)/_qty, 2)),
-                    "country_code":        (_p.get("country_code") or _p.get("country_of_origin") or pais_origen or "MX").upper(),
+                    "country_code":        _p_origen,
                     "product_type":        _p.get("product_type", "goods"),
                     "product_type_code":   _p.get("product_type_code", "goods"),
+                    "country_of_origin":   _p_origen,
+                    # Campos FedEx — nombres en inglés
+                    "what_is_it":          _what_is_it,
+                    "material":            _material,
+                    "manufactured_in":     _made_in,
+                    "intended_use":        _intended_use,
+                    "detailed_description": _detail,
+                    # Aliases en español para compatibilidad con factura_comercial.py
+                    "que_es":              _what_is_it,
+                    "de_que_esta_hecho":   _material,
+                    "donde_se_fabrico":    _made_in,
+                    "para_que_es":         _intended_use,
+                    "descripcion_detallada": _detail,
                 })
         else:
             _en = (desc_en or "").strip() or DESC_EN.get(_cat_key_fb, f"General merchandise {contenido or ''}")
@@ -1370,17 +1401,47 @@ def _crear_guia_ei(quotation_id, rate_id, remitente, destinatario, paquete,
             _p_hs = _p.get("hs_code","") if _p.get("hs_code","") not in _INVALID_HS else _hs
             _p_ptc = _p.get("product_type_code", _prod_type_code)
             _p_ptn = _p.get("product_type_name", _UNSPSC_NAME_MAP.get(_p_ptc, _prod_type_name))
+            _p_country = str(_p.get("country_code") or _p.get("country_of_origin") or "MX")
+            # ── NUEVOS CAMPOS FEDEX ──────────────────────────────────────────────
+            _ei_what_is_it   = str(_p.get("what_is_it")   or _p.get("que_es")            or _p_desc_en)
+            _ei_material     = str(_p.get("material")     or _p.get("de_que_esta_hecho") or "")
+            _ei_made_in      = str(_p.get("manufactured_in") or _p.get("donde_se_fabrico") or _p_country)
+            _ei_intended_use = str(_p.get("intended_use") or _p.get("para_que_es")       or "")
+            _ei_detail       = str(_p.get("detailed_description") or _p.get("descripcion_detallada") or "")
+            # Enriquecer description_en para EI también
+            _ei_extras = []
+            if _ei_what_is_it and _ei_what_is_it != _p_desc_en:
+                _ei_extras.append(_ei_what_is_it)
+            if _ei_material:
+                _ei_extras.append(f"Material: {_ei_material}")
+            if _ei_intended_use:
+                _ei_extras.append(f"Use: {_ei_intended_use}")
+            if _ei_detail:
+                _ei_extras.append(_ei_detail)
+            _ei_desc_en_full = _p_desc_en + (" | " + " | ".join(_ei_extras) if _ei_extras else "")
             _products.append({
                 "description":       str(_p.get("descripcion") or _p.get("description") or contenido)[:60],
-                "description_en":    _p_desc_en,
+                "description_en":    _ei_desc_en_full[:120],
                 "quantity":          int(_p.get("cantidad") or _p.get("quantity") or 1),
                 "price":             float(_p.get("price") or _p.get("precio") or _valor),
                 "weight":            float(_p.get("weight") or _p.get("peso") or _peso),
                 "hs_code":           _p_hs,
                 "hs_code_description": str(_p_desc_en)[:60],
-                "country_code":      str(_p.get("country_code") or "MX"),
+                "country_code":      _p_country,
                 "product_type_code": _p_ptc,
                 "product_type_name": _p_ptn,
+                # Campos FedEx — nombres en inglés
+                "what_is_it":          _ei_what_is_it,
+                "material":            _ei_material,
+                "manufactured_in":     _ei_made_in,
+                "intended_use":        _ei_intended_use,
+                "detailed_description": _ei_detail,
+                # Aliases en español
+                "que_es":              _ei_what_is_it,
+                "de_que_esta_hecho":   _ei_material,
+                "donde_se_fabrico":    _ei_made_in,
+                "para_que_es":         _ei_intended_use,
+                "descripcion_detallada": _ei_detail,
             })
     else:
         _products = [{
